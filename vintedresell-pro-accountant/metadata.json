@@ -1,0 +1,7 @@
+{
+  "name": "VintedResell Pro Accountant",
+  "description": "Une solution complète de gestion et de comptabilité pour les revendeurs Vinted : suivi des stocks, analyse des marges, répartition des bénéfices et gestion financière avancée.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
