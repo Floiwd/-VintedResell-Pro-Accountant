@@ -148,8 +148,8 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
               displaySalePrice: 0,
               salePrice: 0,
               boostCost: 0,
-              purchaseDate: lotPurchaseDate,
-              receptionDate: lotStatus === ItemStatus.TRANSIT ? undefined : lotPurchaseDate,
+              purchaseDate: lotPurchaseDate || new Date().toISOString().split('T')[0],
+              receptionDate: lotStatus === ItemStatus.TRANSIT ? undefined : (lotPurchaseDate || new Date().toISOString().split('T')[0]),
               fees: 0, shippingCost: 0,
               imageUrl: ''
           };
@@ -366,56 +366,56 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-end gap-4">
           <div>
-              <h2 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white uppercase italic">{t.inventory.title}</h2>
-              <p className="text-xs font-black text-slate-400 uppercase tracking-[0.3em] mt-2">{t.inventory.subtitle}</p>
+              <h2 className="text-3xl md:text-4xl font-black tracking-tighter text-slate-900 dark:text-white uppercase italic">{t.inventory.title}</h2>
+              <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.3em] mt-1 md:mt-2">{t.inventory.subtitle}</p>
           </div>
       </div>
 
-      <div className="bg-white dark:bg-[#0F172A] rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col min-h-[700px]">
-        <div className="p-6 md:p-10 border-b border-slate-100 dark:border-slate-800 space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+      <div className="bg-white dark:bg-[#0F172A] rounded-[32px] md:rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col min-h-[700px]">
+        <div className="p-4 md:p-10 border-b border-slate-100 dark:border-slate-800 space-y-4 md:space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6">
                 <div className="flex bg-slate-100 dark:bg-[#1E293B] p-1.5 rounded-[22px] w-full md:w-auto shadow-inner">
                     {[{id: 'all', label: t.inventory.tab_stock}, {id: 'sales', label: t.inventory.tab_sales}].map(view => (
                         <button 
                           key={view.id} 
                           onClick={() => setSubView(view.id as any)} 
-                          className={`flex-1 md:px-10 py-3.5 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all ${subView === view.id ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-xl' : 'text-slate-400 hover:text-slate-600'}`}
+                          className={`flex-1 md:px-10 py-3 md:py-3.5 rounded-[18px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${subView === view.id ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-xl' : 'text-slate-400 hover:text-slate-600'}`}
                         >
                           {view.label}
                         </button>
                     ))}
                 </div>
                 
-                <div className="flex gap-3 w-full md:w-auto">
-                  <div className="relative group">
-                     <button onClick={() => setIsParserOpen(true)} className="p-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-[22px] border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all flex items-center gap-2">
-                        <Clipboard className="w-5 h-5" />
+                <div className="flex gap-2 md:gap-3 w-full md:w-auto">
+                  <div className="relative group flex-1 md:flex-none">
+                     <button onClick={() => setIsParserOpen(true)} className="w-full justify-center p-3 md:p-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-[18px] md:rounded-[22px] border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all flex items-center gap-2">
+                        <Clipboard className="w-4 h-4 md:w-5 md:h-5" />
                         <span className="hidden md:inline text-xs font-black uppercase">{t.inventory.paste_ad}</span>
                      </button>
                   </div>
 
-                  <button onClick={() => setIsLotModalOpen(true)} className="p-4 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-[22px] border border-emerald-100 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all flex items-center gap-2">
-                      <Package className="w-5 h-5" />
+                  <button onClick={() => setIsLotModalOpen(true)} className="flex-1 md:flex-none justify-center p-3 md:p-4 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-[18px] md:rounded-[22px] border border-emerald-100 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all flex items-center gap-2">
+                      <Package className="w-4 h-4 md:w-5 md:h-5" />
                       <span className="hidden md:inline text-xs font-black uppercase">Lot</span>
                   </button>
 
-                  <button onClick={handleExportCSV} title={t.inventory.export_csv} className="p-4 bg-slate-100 dark:bg-slate-800 rounded-[22px] text-slate-500 hover:bg-slate-200 transition-all"><Download className="w-5 h-5" /></button>
-                  <button onClick={() => setIsFilterDrawerOpen(true)} className={`p-4 md:p-5 rounded-[22px] transition-all relative border-2 ${ (filters.sizes.length + filters.status.length + filters.brands.length + filters.categories.length) > 0 ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 border-transparent text-slate-500 hover:bg-slate-200'}`}><SlidersHorizontal className="w-5 h-5" /></button>
-                  <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="flex-1 md:w-auto px-10 py-5 bg-indigo-600 text-white rounded-[24px] font-black uppercase text-xs shadow-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-4"><Plus className="w-5 h-5" /> {t.common.add}</button>
+                  <button onClick={handleExportCSV} title={t.inventory.export_csv} className="p-3 md:p-4 bg-slate-100 dark:bg-slate-800 rounded-[18px] md:rounded-[22px] text-slate-500 hover:bg-slate-200 transition-all"><Download className="w-4 h-4 md:w-5 md:h-5" /></button>
+                  <button onClick={() => setIsFilterDrawerOpen(true)} className={`p-3 md:p-5 rounded-[18px] md:rounded-[22px] transition-all relative border-2 ${ (filters.sizes.length + filters.status.length + filters.brands.length + filters.categories.length) > 0 ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 border-transparent text-slate-500 hover:bg-slate-200'}`}><SlidersHorizontal className="w-4 h-4 md:w-5 md:h-5" /></button>
+                  <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="flex-[2] md:flex-none md:w-auto px-4 md:px-10 py-3 md:py-5 bg-indigo-600 text-white rounded-[18px] md:rounded-[24px] font-black uppercase text-[10px] md:text-xs shadow-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 md:gap-4"><Plus className="w-4 h-4 md:w-5 md:h-5" /> <span className="hidden sm:inline">{t.common.add}</span></button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
                 <div className="md:col-span-3 relative group">
-                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-                    <input type="text" placeholder={t.common.search} value={searchTerm} onChange={e => { setSearchTerm(e.target.value); updateGlobalFilters({ ...filters, searchTerm: e.target.value }); }} className="w-full pl-16 pr-6 py-5 bg-slate-50 dark:bg-[#1E293B] rounded-[24px] outline-none font-bold text-sm border-2 border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0F172A] transition-all" />
+                    <Search className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                    <input type="text" placeholder={t.common.search} value={searchTerm} onChange={e => { setSearchTerm(e.target.value); updateGlobalFilters({ ...filters, searchTerm: e.target.value }); }} className="w-full pl-12 md:pl-16 pr-4 md:pr-6 py-3.5 md:py-5 bg-slate-50 dark:bg-[#1E293B] rounded-[18px] md:rounded-[24px] outline-none font-bold text-xs md:text-sm border-2 border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0F172A] transition-all" />
                 </div>
                 <div className="relative">
-                    <ArrowUpDown className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <select value={filters.sortBy} onChange={e => updateGlobalFilters({ ...filters, sortBy: e.target.value as any })} className="w-full pl-14 pr-6 py-5 bg-slate-50 dark:bg-[#1E293B] rounded-[24px] outline-none font-black text-[10px] uppercase tracking-widest border-2 border-transparent focus:border-indigo-500 appearance-none cursor-pointer">
+                    <ArrowUpDown className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 w-3 h-3 md:w-4 md:h-4 text-slate-400" />
+                    <select value={filters.sortBy} onChange={e => updateGlobalFilters({ ...filters, sortBy: e.target.value as any })} className="w-full pl-10 md:pl-14 pr-4 md:pr-6 py-3.5 md:py-5 bg-slate-50 dark:bg-[#1E293B] rounded-[18px] md:rounded-[24px] outline-none font-black text-[9px] md:text-[10px] uppercase tracking-widest border-2 border-transparent focus:border-indigo-500 appearance-none cursor-pointer">
                         <option value="id_desc">{t.inventory.sort_id_desc}</option>
                         <option value="id_asc">{t.inventory.sort_id_asc}</option>
                         <option value="price_desc">{t.inventory.sort_price_desc}</option>
@@ -425,31 +425,31 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
             </div>
         </div>
 
-        <div className="flex-1 p-6 md:p-10 overflow-y-auto custom-scrollbar bg-slate-50/20 dark:bg-black/10">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+        <div className="flex-1 p-4 md:p-10 overflow-y-auto custom-scrollbar bg-slate-50/20 dark:bg-black/10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
                 {filteredItems.map(item => {
                     const margin = item.salePrice - item.purchasePrice - (item.boostCost || 0);
                     const rotation = calculateRotation(item);
                     return (
-                      <div key={item.id} className="bg-white dark:bg-[#1E293B] border border-slate-100 dark:border-slate-800 rounded-[32px] overflow-hidden group hover:shadow-2xl hover:translate-y-[-4px] transition-all flex flex-col shadow-sm">
-                          <div className="p-4 flex gap-4 flex-1 items-start">
-                              <div className="w-20 h-20 md:w-24 md:h-24 bg-slate-50 dark:bg-[#0F172A] rounded-[20px] overflow-hidden flex-shrink-0 relative border border-slate-100/50 dark:border-slate-800">
-                                  {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><ImageIcon className="w-6 h-6 text-slate-200" /></div>}
+                      <div key={item.id} className="bg-white dark:bg-[#1E293B] border border-slate-100 dark:border-slate-800 rounded-[24px] md:rounded-[32px] overflow-hidden group hover:shadow-2xl hover:translate-y-[-4px] transition-all flex flex-col shadow-sm">
+                          <div className="p-3 md:p-4 flex gap-3 md:gap-4 flex-1 items-start">
+                              <div className="w-20 h-20 md:w-24 md:h-24 bg-slate-50 dark:bg-[#0F172A] rounded-[16px] md:rounded-[20px] overflow-hidden flex-shrink-0 relative border border-slate-100/50 dark:border-slate-800">
+                                  {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><ImageIcon className="w-5 h-5 md:w-6 md:h-6 text-slate-200" /></div>}
                                   <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-slate-900/80 text-white text-[7px] font-black rounded-md uppercase">{item.displayId}</div>
                               </div>
                               <div className="flex-1 min-w-0 flex flex-col gap-1">
                                   <span className="text-[8px] font-black text-indigo-500 uppercase tracking-widest truncate">{item.brand}</span>
-                                  <h4 className="font-bold text-slate-900 dark:text-white text-xs leading-snug whitespace-normal break-words">{item.name}</h4>
+                                  <h4 className="font-bold text-slate-900 dark:text-white text-[11px] md:text-xs leading-snug whitespace-normal break-words">{item.name}</h4>
                                   <div className="flex items-baseline gap-2 mt-1">
-                                      <span className="text-base font-black text-slate-900 dark:text-white">{item.salePrice}€</span>
+                                      <span className="text-sm md:text-base font-black text-slate-900 dark:text-white">{item.salePrice}€</span>
                                       <span className="text-[8px] bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 rounded-md border border-slate-100 dark:border-slate-800 font-black text-slate-400">{item.size || 'TU'}</span>
                                   </div>
-                                  <div className="flex items-center gap-2 mt-1.5">
-                                      <div className={`px-2 py-1 rounded-lg text-[8px] font-black flex items-center gap-1 w-fit border ${margin >= 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                                  <div className="flex items-center gap-1.5 md:gap-2 mt-1.5">
+                                      <div className={`px-1.5 md:px-2 py-1 rounded-lg text-[8px] font-black flex items-center gap-1 w-fit border ${margin >= 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
                                           <Scale className="w-2.5 h-2.5" /> +{margin.toFixed(0)}€
                                       </div>
                                       {rotation !== null && (
-                                          <div className="px-2 py-1 rounded-lg text-[8px] font-black flex items-center gap-1 bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                                          <div className="px-1.5 md:px-2 py-1 rounded-lg text-[8px] font-black flex items-center gap-1 bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
                                               <Clock className="w-2.5 h-2.5" /> {rotation}{t.inventory.item_card.days}
                                           </div>
                                       )}
@@ -457,9 +457,9 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                               </div>
                           </div>
                           <div className="flex border-t border-slate-50 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-800/30">
-                              <button onClick={() => handleEdit(item)} className="flex-1 py-3.5 flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:bg-indigo-600 hover:text-white transition-all border-r border-slate-50 dark:border-slate-800/60"><Edit2 className="w-3 h-3" /> {t.common.edit}</button>
-                              <button onClick={() => handleDuplicate(item)} className="p-3.5 flex items-center justify-center text-slate-500 hover:bg-emerald-600 hover:text-white transition-all border-r border-slate-50 dark:border-slate-800/60"><Copy className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => onDelete(item.id)} className="flex-1 py-3.5 flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:bg-rose-600 hover:text-white transition-all"><Trash2 className="w-3 h-3" /> {t.common.delete}</button>
+                              <button onClick={() => handleEdit(item)} className="flex-1 py-2.5 md:py-3.5 flex items-center justify-center gap-1.5 md:gap-2 text-[8px] md:text-[9px] font-black uppercase tracking-widest text-slate-500 hover:bg-indigo-600 hover:text-white transition-all border-r border-slate-50 dark:border-slate-800/60"><Edit2 className="w-3 h-3" /> {t.common.edit}</button>
+                              <button onClick={() => handleDuplicate(item)} className="p-2.5 md:p-3.5 flex items-center justify-center text-slate-500 hover:bg-emerald-600 hover:text-white transition-all border-r border-slate-50 dark:border-slate-800/60"><Copy className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => onDelete(item.id)} className="flex-1 py-2.5 md:py-3.5 flex items-center justify-center gap-1.5 md:gap-2 text-[8px] md:text-[9px] font-black uppercase tracking-widest text-slate-500 hover:bg-rose-600 hover:text-white transition-all"><Trash2 className="w-3 h-3" /> {t.common.delete}</button>
                           </div>
                       </div>
                     );
@@ -469,15 +469,15 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
 
         {/* Modal Parser Vinted */}
         {isParserOpen && (
-             <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[500] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[32px] shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 overflow-hidden">
-                    <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+             <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[500] flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+                <div className="bg-white dark:bg-slate-900 w-full h-[100dvh] sm:h-auto sm:max-w-lg sm:rounded-[32px] shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col animate-in zoom-in-95 duration-200 overflow-hidden">
+                    <div className="px-6 md:px-8 py-5 md:py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900 shrink-0">
                         <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
                            <Sparkles className="w-5 h-5 text-indigo-500" /> {t.inventory.parser.title}
                         </h3>
                         <button onClick={() => setIsParserOpen(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors"><X className="w-5 h-5 text-slate-500" /></button>
                     </div>
-                    <div className="p-8 space-y-6">
+                    <div className="p-6 md:p-8 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
                         <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800/50">
                             <p className="text-xs text-indigo-800 dark:text-indigo-200 font-medium">{t.inventory.parser.desc}</p>
                         </div>
@@ -485,40 +485,40 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                             value={parserText}
                             onChange={e => setParserText(e.target.value)}
                             placeholder={t.inventory.parser.placeholder}
-                            className="w-full h-40 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 outline-none focus:border-indigo-500 font-medium text-sm resize-none"
+                            className="w-full h-40 md:h-48 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 outline-none focus:border-indigo-500 font-medium text-sm resize-none"
                         />
-                        <div className="flex justify-end gap-3">
-                            <button onClick={() => setIsParserOpen(false)} className="px-6 py-3 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">{t.common.cancel}</button>
-                            <button 
-                                onClick={handleParseSubmit} 
-                                disabled={!parserText || isParsing}
-                                className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                            >
-                                {isParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                                {t.inventory.parser.btn}
-                            </button>
-                        </div>
+                    </div>
+                    <div className="p-6 md:p-8 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex gap-3 md:gap-4 shrink-0">
+                        <button onClick={() => setIsParserOpen(false)} className="flex-1 px-4 md:px-6 py-3 md:py-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl md:rounded-2xl font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest text-[10px] md:text-xs hover:bg-slate-50 dark:hover:bg-slate-800">{t.common.cancel}</button>
+                        <button 
+                            onClick={handleParseSubmit} 
+                            disabled={!parserText || isParsing}
+                            className="flex-1 px-4 md:px-6 py-3 md:py-4 bg-indigo-600 text-white rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {isParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                            {t.inventory.parser.btn}
+                        </button>
                     </div>
                 </div>
-             </div>
+            </div>
         )}
 
         {isModalOpen && (
-          <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[300] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
-             <div className="bg-[#0F172A] w-full max-w-4xl max-h-[90vh] rounded-[48px] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-500 border border-slate-800">
-                 <div className="px-8 py-8 border-b border-slate-800 flex justify-between items-center bg-[#0F172A]">
-                     <div className="flex items-center gap-6">
-                          <div className="p-4 bg-indigo-600 text-white rounded-[22px] shadow-xl"><Plus className="w-7 h-7" /></div>
+          <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[300] flex items-center justify-center p-0 sm:p-6 animate-in fade-in duration-300">
+             <div className="bg-[#0F172A] w-full max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:rounded-[48px] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-500 sm:border border-slate-800">
+                 <div className="px-5 py-5 md:px-8 md:py-8 border-b border-slate-800 flex justify-between items-center bg-[#0F172A] shrink-0">
+                     <div className="flex items-center gap-4 md:gap-6">
+                          <div className="p-3 md:p-4 bg-indigo-600 text-white rounded-[18px] md:rounded-[22px] shadow-xl"><Plus className="w-5 h-5 md:w-7 md:h-7" /></div>
                           <div>
-                              <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter text-white italic leading-none">{editingItem ? t.inventory.form.edit : t.inventory.form.new}</h2>
-                              {editingItem && <span className="text-[11px] font-black text-indigo-500 uppercase tracking-widest mt-1 block">{editingItem.displayId}</span>}
+                              <h2 className="text-xl md:text-3xl font-black uppercase tracking-tighter text-white italic leading-none">{editingItem ? t.inventory.form.edit : t.inventory.form.new}</h2>
+                              {editingItem && <span className="text-[9px] md:text-[11px] font-black text-indigo-500 uppercase tracking-widest mt-1 block">{editingItem.displayId}</span>}
                           </div>
                      </div>
-                     <button onClick={() => setIsModalOpen(false)} className="p-3 hover:bg-slate-800 rounded-full text-slate-400 transition-all"><X className="w-7 h-7" /></button>
+                     <button onClick={() => setIsModalOpen(false)} className="p-2 md:p-3 hover:bg-slate-800 rounded-full text-slate-400 transition-all"><X className="w-5 h-5 md:w-7 md:h-7" /></button>
                  </div>
 
                  <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden bg-[#0F172A]">
-                     <div className="flex-1 overflow-y-auto p-8 md:p-12 space-y-10 custom-scrollbar">
+                     <div className="flex-1 overflow-y-auto p-5 md:p-12 space-y-6 md:space-y-10 custom-scrollbar">
                          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                              <div className="md:col-span-1 flex flex-col items-center">
                                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 tracking-[0.2em] w-full text-center">{t.inventory.form.image}</label>
@@ -596,7 +596,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                              </select>
                                          </div>
                                          
-                                         <div className="grid grid-cols-2 gap-4">
+                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                              {itemStatusInForm !== ItemStatus.TRANSIT ? (
                                                  <div className="bg-slate-900/50 p-4 rounded-[28px] border border-slate-800">
                                                      <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {t.inventory.form.reception}</label>
@@ -621,7 +621,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                              )}
                                          </div>
 
-                                         <div className="grid grid-cols-2 gap-4">
+                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                              <div className="bg-slate-900/50 p-5 rounded-[28px] border border-slate-800 shadow-inner">
                                                  <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 text-center">{t.inventory.form.size}</label>
                                                  <input value={draftSize} onChange={e => setDraftSize(e.target.value)} className="w-full bg-transparent text-white font-black text-center text-lg outline-none" placeholder="Ex: M" />
@@ -702,9 +702,9 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                               </div>
                          </div>
                      </div>
-                     <div className="p-6 md:p-8 border-t border-slate-800 bg-[#0F172A] flex flex-col sm:flex-row gap-5">
-                         <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-5 bg-slate-800 text-slate-400 rounded-[28px] font-black uppercase text-xs tracking-widest hover:bg-slate-700 transition-all">{t.common.cancel}</button>
-                         <button type="submit" className="flex-1 py-5 bg-indigo-600 text-white rounded-[28px] font-black uppercase text-xs tracking-[0.3em] shadow-lg hover:bg-indigo-700 transition-all">{t.inventory.form.save_btn}</button>
+                     <div className="p-5 md:p-8 border-t border-slate-800 bg-[#0F172A] flex flex-col sm:flex-row gap-3 md:gap-5 shrink-0">
+                         <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 md:py-5 bg-slate-800 text-slate-400 rounded-[20px] md:rounded-[28px] font-black uppercase text-[10px] md:text-xs tracking-widest hover:bg-slate-700 transition-all">{t.common.cancel}</button>
+                         <button type="submit" className="flex-1 py-4 md:py-5 bg-indigo-600 text-white rounded-[20px] md:rounded-[28px] font-black uppercase text-[10px] md:text-xs tracking-[0.3em] shadow-lg hover:bg-indigo-700 transition-all">{t.inventory.form.save_btn}</button>
                      </div>
                  </form>
              </div>
@@ -737,21 +737,21 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
           </div>
         )}
         {isLotModalOpen && (
-          <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[300] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
-             <div className="bg-[#0F172A] w-full max-w-4xl max-h-[90vh] rounded-[48px] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-500 border border-slate-800">
-                 <div className="px-8 py-8 border-b border-slate-800 flex justify-between items-center bg-[#0F172A]">
-                     <div className="flex items-center gap-6">
-                          <div className="p-4 bg-emerald-600 text-white rounded-[22px] shadow-xl"><Package className="w-7 h-7" /></div>
+          <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[300] flex items-center justify-center p-0 sm:p-6 animate-in fade-in duration-300">
+             <div className="bg-[#0F172A] w-full max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:rounded-[48px] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-500 sm:border border-slate-800">
+                 <div className="px-5 py-5 md:px-8 md:py-8 border-b border-slate-800 flex justify-between items-center bg-[#0F172A] shrink-0">
+                     <div className="flex items-center gap-4 md:gap-6">
+                          <div className="p-3 md:p-4 bg-emerald-600 text-white rounded-[18px] md:rounded-[22px] shadow-xl"><Package className="w-5 h-5 md:w-7 md:h-7" /></div>
                           <div>
-                              <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter text-white italic leading-none">Ajouter un Lot</h2>
-                              <span className="text-[11px] font-black text-emerald-500 uppercase tracking-widest mt-1 block">Création multiple</span>
+                              <h2 className="text-xl md:text-3xl font-black uppercase tracking-tighter text-white italic leading-none">Ajouter un Lot</h2>
+                              <span className="text-[9px] md:text-[11px] font-black text-emerald-500 uppercase tracking-widest mt-1 block">Création multiple</span>
                           </div>
                      </div>
-                     <button onClick={() => setIsLotModalOpen(false)} className="p-3 hover:bg-slate-800 rounded-full text-slate-400 transition-all"><X className="w-7 h-7" /></button>
+                     <button onClick={() => setIsLotModalOpen(false)} className="p-2 md:p-3 hover:bg-slate-800 rounded-full text-slate-400 transition-all"><X className="w-5 h-5 md:w-7 md:h-7" /></button>
                  </div>
 
                  <form onSubmit={handleLotSubmit} className="flex-1 flex flex-col overflow-hidden bg-[#0F172A]">
-                     <div className="flex-1 overflow-y-auto p-8 md:p-12 space-y-10 custom-scrollbar">
+                     <div className="flex-1 overflow-y-auto p-5 md:p-12 space-y-6 md:space-y-10 custom-scrollbar">
                          <div className="bg-emerald-900/20 border border-emerald-800/50 p-4 rounded-2xl mb-2">
                              <p className="text-xs text-emerald-200/70 font-medium leading-relaxed">
                                  Créez rapidement des fiches avec le prix d'achat réparti équitablement. 
@@ -765,7 +765,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                      <input type="text" value={lotName} onChange={e => setLotName(e.target.value)} placeholder="Ex: Vêtement friperie" className="w-full bg-transparent font-black outline-none focus:text-emerald-400 text-xl text-white" />
                                  </div>
                                  
-                                 <div className="grid grid-cols-2 gap-4">
+                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                      <div className="bg-slate-900/50 p-5 rounded-[28px] border border-slate-800 shadow-inner">
                                          <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 tracking-[0.2em]">Marque (Optionnel)</label>
                                          <div className="relative">
@@ -787,7 +787,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                      </div>
                                  </div>
 
-                                 <div className="grid grid-cols-2 gap-4">
+                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                      <div className="bg-slate-900/50 p-5 rounded-[28px] border border-slate-800 shadow-inner">
                                          <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 text-center">Taille (Optionnel)</label>
                                          <input value={lotSize} onChange={e => setLotSize(e.target.value)} className="w-full bg-transparent text-white font-black text-center text-lg outline-none" placeholder="Mixte" />
@@ -802,9 +802,9 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                              </div>
 
                              <div className="space-y-6">
-                                 <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 p-8 rounded-[40px] shadow-2xl text-white space-y-6 relative overflow-hidden group">
+                                 <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-2xl text-white space-y-6 relative overflow-hidden group">
                                      <Package className="absolute -right-8 -top-8 w-40 h-40 opacity-5 rotate-12" />
-                                     <div className="grid grid-cols-2 gap-6 relative z-10">
+                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 relative z-10">
                                          <div>
                                            <label className="block text-[9px] font-black uppercase opacity-60 mb-2">Prix total du lot (€)</label>
                                            <input required type="number" step="0.01" min="0" value={lotTotalPrice} onChange={e => setLotTotalPrice(e.target.value)} className="w-full bg-white/10 border-2 border-white/20 rounded-[20px] p-4 font-black outline-none focus:bg-white/20 text-white text-xl" />
@@ -816,7 +816,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                      </div>
                                      <div className="relative z-10 space-y-2">
                                          <label className="block text-[11px] font-black uppercase opacity-80 tracking-[0.4em] text-center">Prix unitaire calculé</label>
-                                         <div className="w-full p-6 bg-white text-emerald-700 rounded-[28px] font-black text-4xl text-center border-[6px] border-emerald-400 shadow-xl flex items-center justify-center">
+                                         <div className="w-full p-4 md:p-6 bg-white text-emerald-700 rounded-[24px] md:rounded-[28px] font-black text-3xl md:text-4xl text-center border-[6px] border-emerald-400 shadow-xl flex items-center justify-center">
                                             {Number(lotQuantity) > 0 && Number(lotTotalPrice) >= 0 
                                                 ? (Number(lotTotalPrice) / Number(lotQuantity)).toFixed(2) 
                                                 : '0.00'}€
@@ -824,7 +824,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                      </div>
                                  </div>
 
-                                 <div className="grid grid-cols-2 gap-4">
+                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                      <div className="bg-slate-900/50 p-4 rounded-[28px] border border-slate-800">
                                          <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Tag className="w-3.5 h-3.5" /> Statut du lot</label>
                                          <select value={lotStatus} onChange={e => setLotStatus(e.target.value as ItemStatus)} className="w-full bg-transparent text-white font-black text-xs outline-none appearance-none cursor-pointer">
@@ -834,15 +834,15 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                      </div>
                                      <div className="bg-slate-900/50 p-4 rounded-[28px] border border-slate-800">
                                          <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Date d'achat</label>
-                                         <input required type="date" value={lotPurchaseDate} onChange={e => setLotPurchaseDate(e.target.value)} className="w-full bg-transparent text-white font-black text-xs outline-none" />
+                                         <input required={lotStatus !== ItemStatus.TRANSIT} type="date" value={lotPurchaseDate} onChange={e => setLotPurchaseDate(e.target.value)} className="w-full bg-transparent text-white font-black text-xs outline-none" />
                                      </div>
                                  </div>
                              </div>
                          </div>
                      </div>
-                     <div className="p-6 md:p-8 border-t border-slate-800 bg-[#0F172A] flex flex-col sm:flex-row gap-5">
-                         <button type="button" onClick={() => setIsLotModalOpen(false)} className="flex-1 py-5 bg-slate-800 text-slate-400 rounded-[28px] font-black uppercase text-xs tracking-widest hover:bg-slate-700 transition-all">{t.common.cancel}</button>
-                         <button type="submit" className="flex-1 py-5 bg-emerald-600 text-white rounded-[28px] font-black uppercase text-xs tracking-[0.3em] shadow-lg hover:bg-emerald-700 transition-all">Créer {lotQuantity || 0} articles</button>
+                     <div className="p-5 md:p-8 border-t border-slate-800 bg-[#0F172A] flex flex-col sm:flex-row gap-3 md:gap-5 shrink-0">
+                         <button type="button" onClick={() => setIsLotModalOpen(false)} className="flex-1 py-4 md:py-5 bg-slate-800 text-slate-400 rounded-[20px] md:rounded-[28px] font-black uppercase text-[10px] md:text-xs tracking-widest hover:bg-slate-700 transition-all">{t.common.cancel}</button>
+                         <button type="submit" className="flex-1 py-4 md:py-5 bg-emerald-600 text-white rounded-[20px] md:rounded-[28px] font-black uppercase text-[10px] md:text-xs tracking-[0.3em] shadow-lg hover:bg-emerald-700 transition-all">Créer {lotQuantity || 0} articles</button>
                      </div>
                  </form>
              </div>
