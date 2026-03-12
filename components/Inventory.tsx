@@ -130,12 +130,13 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
       if (qty <= 0 || total < 0) return;
       
       const pricePerItem = total / qty;
+      const finalName = lotName.trim() || 'Article du lot';
       
       for (let i = 0; i < qty; i++) {
           const item: InventoryItem = {
               id: crypto.randomUUID(),
               displayId: generateNextId(i), 
-              name: lotName,
+              name: finalName,
               brand: lotBrand,
               category: lotCategory,
               size: lotSize,
@@ -732,19 +733,25 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
 
                  <form onSubmit={handleLotSubmit} className="flex-1 flex flex-col overflow-hidden bg-[#0F172A]">
                      <div className="flex-1 overflow-y-auto p-8 md:p-12 space-y-10 custom-scrollbar">
+                         <div className="bg-emerald-900/20 border border-emerald-800/50 p-4 rounded-2xl mb-2">
+                             <p className="text-xs text-emerald-200/70 font-medium leading-relaxed">
+                                 Créez rapidement des fiches avec le prix d'achat réparti équitablement. 
+                                 <strong className="text-emerald-400"> Laissez le nom, la marque et la taille vides si le lot est mixte</strong>, vous pourrez compléter chaque fiche individuellement plus tard.
+                             </p>
+                         </div>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                              <div className="space-y-6">
                                  <div className="bg-slate-900/50 p-6 rounded-[28px] border border-slate-800 shadow-inner">
-                                     <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 tracking-[0.2em]">Nom du lot / Produit</label>
-                                     <input required type="text" value={lotName} onChange={e => setLotName(e.target.value)} placeholder="Ex: T-shirts Nike" className="w-full bg-transparent font-black outline-none focus:text-emerald-400 text-xl text-white" />
+                                     <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 tracking-[0.2em]">Nom générique (Optionnel)</label>
+                                     <input type="text" value={lotName} onChange={e => setLotName(e.target.value)} placeholder="Ex: Vêtement friperie" className="w-full bg-transparent font-black outline-none focus:text-emerald-400 text-xl text-white" />
                                  </div>
                                  
                                  <div className="grid grid-cols-2 gap-4">
                                      <div className="bg-slate-900/50 p-5 rounded-[28px] border border-slate-800 shadow-inner">
-                                         <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 tracking-[0.2em]">Marque</label>
+                                         <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 tracking-[0.2em]">Marque (Optionnel)</label>
                                          <div className="relative">
                                               <select value={lotBrand} onChange={e => setLotBrand(e.target.value)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-[20px] p-4 text-white font-black text-sm outline-none focus:border-emerald-500 cursor-pointer appearance-none">
-                                                 <option value="">Sélectionner</option>
+                                                 <option value="">Mixte / Vide</option>
                                                  {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
                                               </select>
                                               <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 pointer-events-none" />
@@ -763,8 +770,8 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
 
                                  <div className="grid grid-cols-2 gap-4">
                                      <div className="bg-slate-900/50 p-5 rounded-[28px] border border-slate-800 shadow-inner">
-                                         <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 text-center">Taille</label>
-                                         <input value={lotSize} onChange={e => setLotSize(e.target.value)} className="w-full bg-transparent text-white font-black text-center text-lg outline-none" placeholder="Ex: M" />
+                                         <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 text-center">Taille (Optionnel)</label>
+                                         <input value={lotSize} onChange={e => setLotSize(e.target.value)} className="w-full bg-transparent text-white font-black text-center text-lg outline-none" placeholder="Mixte" />
                                      </div>
                                      <div className="bg-slate-900/50 p-5 rounded-[28px] border border-slate-800 shadow-inner">
                                          <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 text-center">État</label>
