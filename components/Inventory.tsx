@@ -84,6 +84,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
   const [lotSize, setLotSize] = useState('');
   const [lotCondition, setLotCondition] = useState<ItemCondition>(ItemCondition.VERY_GOOD);
   const [lotPurchaseDate, setLotPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
+  const [lotStatus, setLotStatus] = useState<ItemStatus>(ItemStatus.IN_STOCK);
 
   // Génération automatique intelligente de l'ID suivant
   const generateNextId = (offset = 0) => {
@@ -121,6 +122,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
       setLotSize('');
       setLotCondition(ItemCondition.VERY_GOOD);
       setLotPurchaseDate(new Date().toISOString().split('T')[0]);
+      setLotStatus(ItemStatus.IN_STOCK);
   };
 
   const handleLotSubmit = (e: React.FormEvent) => {
@@ -141,13 +143,13 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
               category: lotCategory,
               size: lotSize,
               condition: lotCondition,
-              status: ItemStatus.IN_STOCK,
+              status: lotStatus,
               purchasePrice: pricePerItem,
               displaySalePrice: 0,
               salePrice: 0,
               boostCost: 0,
               purchaseDate: lotPurchaseDate,
-              receptionDate: lotPurchaseDate,
+              receptionDate: lotStatus === ItemStatus.TRANSIT ? undefined : lotPurchaseDate,
               fees: 0, shippingCost: 0,
               imageUrl: ''
           };
@@ -205,6 +207,9 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
     
     if (newStatus === ItemStatus.IN_STOCK && !receptionDate) {
       setReceptionDate(today);
+    }
+    if (newStatus === ItemStatus.TRANSIT) {
+      setReceptionDate('');
     }
     if ((newStatus === ItemStatus.SOLD || newStatus === ItemStatus.PAYMENT_PENDING) && !saleDate) {
       setSaleDate(today);
@@ -592,14 +597,28 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                          </div>
                                          
                                          <div className="grid grid-cols-2 gap-4">
-                                             <div className="bg-slate-900/50 p-4 rounded-[28px] border border-slate-800">
-                                                 <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {t.inventory.form.reception}</label>
-                                                 <input type="date" value={receptionDate} onChange={e => setReceptionDate(e.target.value)} className="w-full bg-transparent text-white font-black text-xs outline-none" />
-                                             </div>
-                                             <div className="bg-slate-900/50 p-4 rounded-[28px] border border-slate-800">
-                                                 <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {t.inventory.form.sale_date}</label>
-                                                 <input type="date" value={saleDate} onChange={e => setSaleDate(e.target.value)} className="w-full bg-transparent text-white font-black text-xs outline-none" />
-                                             </div>
+                                             {itemStatusInForm !== ItemStatus.TRANSIT ? (
+                                                 <div className="bg-slate-900/50 p-4 rounded-[28px] border border-slate-800">
+                                                     <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {t.inventory.form.reception}</label>
+                                                     <input type="date" value={receptionDate} onChange={e => setReceptionDate(e.target.value)} className="w-full bg-transparent text-white font-black text-xs outline-none" />
+                                                 </div>
+                                             ) : (
+                                                 <div className="bg-slate-900/20 p-4 rounded-[28px] border border-slate-800/50 opacity-50">
+                                                     <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {t.inventory.form.reception}</label>
+                                                     <div className="w-full bg-transparent text-slate-500 font-black text-xs">En transit...</div>
+                                                 </div>
+                                             )}
+                                             {itemStatusInForm === ItemStatus.SOLD || itemStatusInForm === ItemStatus.PAYMENT_PENDING ? (
+                                                 <div className="bg-slate-900/50 p-4 rounded-[28px] border border-slate-800">
+                                                     <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {t.inventory.form.sale_date}</label>
+                                                     <input type="date" value={saleDate} onChange={e => setSaleDate(e.target.value)} className="w-full bg-transparent text-white font-black text-xs outline-none" />
+                                                 </div>
+                                             ) : (
+                                                 <div className="bg-slate-900/20 p-4 rounded-[28px] border border-slate-800/50 opacity-50">
+                                                     <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {t.inventory.form.sale_date}</label>
+                                                     <div className="w-full bg-transparent text-slate-500 font-black text-xs">Non vendu</div>
+                                                 </div>
+                                             )}
                                          </div>
 
                                          <div className="grid grid-cols-2 gap-4">
@@ -805,9 +824,18 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                      </div>
                                  </div>
 
-                                 <div className="bg-slate-900/50 p-4 rounded-[28px] border border-slate-800">
-                                     <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Date d'achat / réception</label>
-                                     <input required type="date" value={lotPurchaseDate} onChange={e => setLotPurchaseDate(e.target.value)} className="w-full bg-transparent text-white font-black text-xs outline-none" />
+                                 <div className="grid grid-cols-2 gap-4">
+                                     <div className="bg-slate-900/50 p-4 rounded-[28px] border border-slate-800">
+                                         <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Tag className="w-3.5 h-3.5" /> Statut du lot</label>
+                                         <select value={lotStatus} onChange={e => setLotStatus(e.target.value as ItemStatus)} className="w-full bg-transparent text-white font-black text-xs outline-none appearance-none cursor-pointer">
+                                             <option value={ItemStatus.IN_STOCK}>En stock</option>
+                                             <option value={ItemStatus.TRANSIT}>En transit</option>
+                                         </select>
+                                     </div>
+                                     <div className="bg-slate-900/50 p-4 rounded-[28px] border border-slate-800">
+                                         <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Date d'achat</label>
+                                         <input required type="date" value={lotPurchaseDate} onChange={e => setLotPurchaseDate(e.target.value)} className="w-full bg-transparent text-white font-black text-xs outline-none" />
+                                     </div>
                                  </div>
                              </div>
                          </div>
