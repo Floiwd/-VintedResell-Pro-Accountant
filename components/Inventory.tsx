@@ -210,7 +210,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
     setItemStatusInForm(newStatus);
     const today = new Date().toISOString().split('T')[0];
     
-    if (newStatus === ItemStatus.IN_STOCK && !receptionDate) {
+    if (newStatus === ItemStatus.IN_STOCK && subStatusInForm === ItemSubStatus.ONLINE && !receptionDate) {
       setReceptionDate(today);
     }
     if (newStatus === ItemStatus.TRANSIT) {
@@ -218,6 +218,15 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
     }
     if ((newStatus === ItemStatus.SOLD || newStatus === ItemStatus.PAYMENT_PENDING) && !saleDate) {
       setSaleDate(today);
+    }
+  };
+
+  const handleSubStatusChange = (newSubStatus: ItemSubStatus) => {
+    setSubStatusInForm(newSubStatus);
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (itemStatusInForm === ItemStatus.IN_STOCK && newSubStatus === ItemSubStatus.ONLINE && !receptionDate) {
+      setReceptionDate(today);
     }
   };
 
@@ -609,7 +618,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                                  <select value={itemStatusInForm} onChange={e => handleStatusChange(e.target.value as ItemStatus)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-[20px] p-4 text-white font-black text-sm outline-none focus:border-indigo-500 cursor-pointer appearance-none">
                                                      {Object.values(ItemStatus).map(s => <option key={s} value={s}>{t.status[s] || s}</option>)}
                                                  </select>
-                                                 <select value={subStatusInForm} onChange={e => setSubStatusInForm(e.target.value as ItemSubStatus)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-[20px] p-4 text-white font-black text-sm outline-none focus:border-indigo-500 cursor-pointer appearance-none">
+                                                 <select value={subStatusInForm} onChange={e => handleSubStatusChange(e.target.value as ItemSubStatus)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-[20px] p-4 text-white font-black text-sm outline-none focus:border-indigo-500 cursor-pointer appearance-none">
                                                      {Object.values(ItemSubStatus).map(s => <option key={s} value={s}>{t.subStatus[s] || s}</option>)}
                                                  </select>
                                              </div>
@@ -618,12 +627,12 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                              {itemStatusInForm !== ItemStatus.TRANSIT ? (
                                                  <div className="bg-slate-900/50 p-4 rounded-[28px] border border-slate-800">
-                                                     <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {t.inventory.form.reception}</label>
+                                                     <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {subStatusInForm === ItemSubStatus.ONLINE ? 'Mise en vente' : t.inventory.form.reception}</label>
                                                      <input type="date" value={receptionDate} onChange={e => setReceptionDate(e.target.value)} className="w-full bg-transparent text-white font-black text-xs outline-none" />
                                                  </div>
                                              ) : (
                                                  <div className="bg-slate-900/20 p-4 rounded-[28px] border border-slate-800/50 opacity-50">
-                                                     <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {t.inventory.form.reception}</label>
+                                                     <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {subStatusInForm === ItemSubStatus.ONLINE ? 'Mise en vente' : t.inventory.form.reception}</label>
                                                      <div className="w-full bg-transparent text-slate-500 font-black text-xs">En transit...</div>
                                                  </div>
                                              )}

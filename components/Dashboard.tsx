@@ -65,6 +65,26 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     });
     const categoryStats = Object.values(categoryData).sort((a, b) => b.value - a.value).slice(0, 5);
 
+    // Sales by Day of Week
+    const daysOfWeek = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    const orderedDays = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+    
+    const dayData: Record<string, { day: string, revenue: number, profit: number }> = {};
+    orderedDays.forEach(day => {
+      dayData[day] = { day, revenue: 0, profit: 0 };
+    });
+
+    soldItems.forEach(item => {
+      if (!item.saleDate) return;
+      const date = new Date(item.saleDate);
+      const dayName = daysOfWeek[date.getDay()];
+      if (dayData[dayName]) {
+        dayData[dayName].revenue += item.salePrice;
+        dayData[dayName].profit += (item.salePrice - item.purchasePrice - (item.boostCost || 0));
+      }
+    });
+    const dayStats = orderedDays.map(day => dayData[day]);
+
     return {
       totalProfit,
       inStockCount: inStockItems.length,
@@ -73,7 +93,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       profitabilityByItem,
       monthlyStats,
       brandStats,
-      categoryStats
+      categoryStats,
+      dayStats
     };
   }, [inventory, monthlyGoal]);
 
@@ -214,6 +235,28 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                       </PieChart>
                   </ResponsiveContainer>
               </div>
+          </div>
+      </div>
+
+      <div className="bg-white dark:bg-[#0F172A] p-10 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm">
+          <h3 className="text-sm font-black uppercase text-slate-900 dark:text-white mb-10 flex items-center gap-3">
+              <Activity className="w-5 h-5 text-indigo-500" /> Répartition des Ventes par Jour
+          </h3>
+          <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={stats.dayStats} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} />
+                      <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
+                        itemStyle={{ fontWeight: 'bold' }}
+                      />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold', paddingTop: '20px' }} />
+                      <Line type="monotone" dataKey="revenue" name="Chiffre d'Affaires" stroke="#10B981" strokeWidth={4} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" dataKey="profit" name="Bénéfice" stroke="#4F46E5" strokeWidth={4} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                  </LineChart>
+              </ResponsiveContainer>
           </div>
       </div>
     </div>
