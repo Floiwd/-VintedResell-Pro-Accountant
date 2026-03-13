@@ -11,6 +11,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 interface Props {
   inventory: InventoryItem[];
+  onBrandClick?: (brand: string) => void;
 }
 
 
@@ -36,7 +37,7 @@ const FormatText = ({ text }: { text: string }) => {
     );
 };
 
-export default function PricingGuide({ inventory }: Props) {
+export default function PricingGuide({ inventory, onBrandClick }: Props) {
   const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('vpro_pricing_search') || '');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
@@ -204,7 +205,17 @@ export default function PricingGuide({ inventory }: Props) {
                             <CheckCircle2 className="w-6 h-6" />
                         </button>
                         <div>
-                            <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1">{group.brand}</div>
+                            <div 
+                              className={`text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1 ${onBrandClick ? 'cursor-pointer hover:underline' : ''}`}
+                              onClick={(e) => {
+                                if (onBrandClick) {
+                                  e.stopPropagation();
+                                  onBrandClick(group.brand);
+                                }
+                              }}
+                            >
+                              {group.brand}
+                            </div>
                             <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight whitespace-normal break-words">{group.model_name}</h3>
                         </div>
                     </div>

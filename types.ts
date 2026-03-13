@@ -4,7 +4,8 @@ export enum ItemStatus {
   PAYMENT_PENDING = 'ATTENTE_PAIEMENT',
   SOLD = 'VENDU',
   PENDING = 'EN_COURS',
-  RETURNED = 'RETOURNÉ'
+  RETURNED = 'RETOURNÉ',
+  DISPUTE = 'LITIGE'
 }
 
 export enum ItemSubStatus {
@@ -45,6 +46,10 @@ export interface InventoryItem {
   saleDate?: string;
   category: string;
   imageUrl?: string;
+  quantity?: number;
+  minStockThreshold?: number;
+  purchasePlatform?: string;
+  salePlatform?: string;
 }
 
 export interface Member {

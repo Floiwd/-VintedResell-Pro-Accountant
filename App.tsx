@@ -10,17 +10,24 @@ import PricingGuide from './components/PricingGuide';
 import Auth from './components/Auth';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 
-const NavItem = ({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) => (
+const NavItem = ({ active, onClick, icon, label, badgeCount }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string, badgeCount?: number }) => (
   <button 
     onClick={onClick} 
-    className={`w-full flex items-center gap-4 px-5 py-4 rounded-[20px] font-black text-xs uppercase tracking-widest transition-all duration-300 ${
+    className={`w-full flex items-center justify-between px-5 py-4 rounded-[20px] font-black text-xs uppercase tracking-widest transition-all duration-300 ${
       active 
       ? 'bg-indigo-600 text-white shadow-2xl shadow-indigo-200 dark:shadow-none translate-x-1' 
       : 'text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
     }`}
   >
-    <span className={`${active ? 'scale-110' : 'scale-100'} transition-transform`}>{icon}</span>
-    <span>{label}</span>
+    <div className="flex items-center gap-4">
+      <span className={`${active ? 'scale-110' : 'scale-100'} transition-transform`}>{icon}</span>
+      <span>{label}</span>
+    </div>
+    {badgeCount !== undefined && badgeCount > 0 && (
+      <span className={`px-2 py-1 rounded-full text-[9px] font-black ${active ? 'bg-white text-indigo-600' : 'bg-red-500 text-white'}`}>
+        {badgeCount}
+      </span>
+    )}
   </button>
 );
 
@@ -350,7 +357,10 @@ const AppContent: React.FC = () => {
 
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 md:p-12 pb-32 lg:pb-12 scroll-smooth">
           <div className="max-w-7xl mx-auto">
-            {activeTab === 'dashboard' && <Dashboard state={state} />}
+            {activeTab === 'dashboard' && <Dashboard state={state} onBrandClick={(brand) => {
+              setState(prev => ({ ...prev, filters: { ...prev.filters, brands: [brand] } }));
+              setActiveTab('inventory');
+            }} />}
             {activeTab === 'inventory' && <Inventory 
               inventory={state.inventory} 
               activeFilters={state.filters}
@@ -362,7 +372,10 @@ const AppContent: React.FC = () => {
               onAddCatalogItem={(item) => setState(prev => ({ ...prev, catalog: [...(prev.catalog || []), item] }))}
               onDeleteCatalogItem={(id) => setState(prev => ({ ...prev, catalog: (prev.catalog || []).filter(c => c.id !== id) }))}
             />}
-            {activeTab === 'pricing' && <PricingGuide inventory={state.inventory} />}
+            {activeTab === 'pricing' && <PricingGuide inventory={state.inventory} onBrandClick={(brand) => {
+              setState(prev => ({ ...prev, filters: { ...prev.filters, brands: [brand] } }));
+              setActiveTab('inventory');
+            }} />}
             {activeTab === 'finances' && <Finances 
                 state={state} 
                 onAddTransfer={(t) => setState(prev => ({ ...prev, transfers: [...prev.transfers, t] }))} 

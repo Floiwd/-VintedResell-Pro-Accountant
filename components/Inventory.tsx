@@ -39,6 +39,15 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [searchTerm, setSearchTerm] = useState(activeFilters?.searchTerm || '');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      updateGlobalFilters({ ...filters, searchTerm });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -65,6 +74,8 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
   const [draftCategory, setDraftCategory] = useState(CATEGORIES[0]);
   const [draftCondition, setDraftCondition] = useState<ItemCondition>(ItemCondition.VERY_GOOD);
   const [draftSize, setDraftSize] = useState('');
+  const [draftQuantity, setDraftQuantity] = useState<string>('1');
+  const [draftMinStockThreshold, setDraftMinStockThreshold] = useState<string>('0');
   const [salePriceValue, setSalePriceValue] = useState<string>('');
   const [purchasePriceValue, setPurchasePriceValue] = useState<string>('');
   const [displaySalePriceValue, setDisplaySalePriceValue] = useState<string>('');
@@ -166,7 +177,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
       setEditingItem(null); 
       setDraftDisplayId(generateNextId()); 
       setDraftName(''); setDraftBrand(''); 
-      setDraftSize(''); setSalePriceValue(''); setPurchasePriceValue(''); setDisplaySalePriceValue('');
+      setDraftSize(''); setDraftQuantity('1'); setDraftMinStockThreshold('0'); setSalePriceValue(''); setPurchasePriceValue(''); setDisplaySalePriceValue('');
       setBoostCostValue(''); setIsBoosted(false);
       setItemStatusInForm(ItemStatus.IN_STOCK); setSubStatusInForm(ItemSubStatus.NONE); setImageUrl('');
       setPurchaseDate(new Date().toISOString().split('T')[0]);
@@ -178,6 +189,8 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
       setDraftDisplayId(item.displayId || '');
       setDraftName(item.name); setDraftBrand(item.brand); setDraftCategory(item.category);
       setDraftSize(item.size || ''); setDraftCondition(item.condition || ItemCondition.VERY_GOOD);
+      setDraftQuantity(item.quantity?.toString() || '1');
+      setDraftMinStockThreshold(item.minStockThreshold?.toString() || '0');
       setPurchasePriceValue(item.purchasePrice.toString());
       setDisplaySalePriceValue(item.displaySalePrice?.toString() || item.salePrice.toString());
       setSalePriceValue(item.salePrice.toString());
@@ -278,6 +291,8 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
           category: draftCategory,
           size: draftSize,
           condition: draftCondition,
+          quantity: parseInt(draftQuantity) || 1,
+          minStockThreshold: parseInt(draftMinStockThreshold) || 0,
           status: itemStatusInForm,
           subStatus: subStatusInForm,
           purchasePrice: Number(purchasePriceValue),
@@ -335,10 +350,10 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
   const filteredItems = useMemo(() => {
     let result = inventory.filter(i => {
       if (subView === 'sales' && i.status !== ItemStatus.SOLD) return false;
-      const matchesSearch = !searchTerm || 
-        i.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        i.brand.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        i.displayId?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = !debouncedSearchTerm || 
+        i.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) || 
+        i.brand.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) || 
+        i.displayId?.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
       if (!matchesSearch) return false;
       if (filters.status.length > 0 && !filters.status.includes(i.status)) return false;
       if (filters.brands.length > 0 && !filters.brands.includes(i.brand)) return false;
@@ -426,7 +441,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
                 <div className="md:col-span-3 relative group">
                     <Search className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-                    <input type="text" placeholder={t.common.search} value={searchTerm} onChange={e => { setSearchTerm(e.target.value); updateGlobalFilters({ ...filters, searchTerm: e.target.value }); }} className="w-full pl-12 md:pl-16 pr-4 md:pr-6 py-3.5 md:py-5 bg-slate-50 dark:bg-[#1E293B] rounded-[18px] md:rounded-[24px] outline-none font-bold text-xs md:text-sm border-2 border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0F172A] transition-all" />
+                    <input type="text" placeholder={t.common.search} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-12 md:pl-16 pr-4 md:pr-6 py-3.5 md:py-5 bg-slate-50 dark:bg-[#1E293B] rounded-[18px] md:rounded-[24px] outline-none font-bold text-xs md:text-sm border-2 border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-[#0F172A] transition-all" />
                 </div>
                 <div className="relative">
                     <ArrowUpDown className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 w-3 h-3 md:w-4 md:h-4 text-slate-400" />
@@ -659,6 +674,17 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                                  <select value={draftCondition} onChange={e => setDraftCondition(e.target.value as ItemCondition)} className="w-full bg-transparent text-white font-black text-center text-[10px] outline-none appearance-none cursor-pointer">
                                                      {CONDITIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                                                  </select>
+                                             </div>
+                                         </div>
+
+                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                             <div className="bg-slate-900/50 p-5 rounded-[28px] border border-slate-800 shadow-inner">
+                                                 <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 text-center">Quantité</label>
+                                                 <input type="number" min="1" value={draftQuantity} onChange={e => setDraftQuantity(e.target.value)} className="w-full bg-transparent text-white font-black text-center text-lg outline-none" placeholder="1" />
+                                             </div>
+                                             <div className="bg-slate-900/50 p-5 rounded-[28px] border border-slate-800 shadow-inner">
+                                                 <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 text-center">Alerte Stock Bas</label>
+                                                 <input type="number" min="0" value={draftMinStockThreshold} onChange={e => setDraftMinStockThreshold(e.target.value)} className="w-full bg-transparent text-white font-black text-center text-lg outline-none" placeholder="0" />
                                              </div>
                                          </div>
 

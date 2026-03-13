@@ -5,15 +5,16 @@ import {
 } from 'recharts';
 import { AppState, ItemStatus } from '../types';
 import { 
-  Package, DollarSign, Wallet, Target, Award, Activity, TrendingUp
+  Package, DollarSign, Wallet, Target, Award, Activity, TrendingUp, AlertTriangle
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface Props {
   state: AppState;
+  onBrandClick?: (brand: string) => void;
 }
 
-const Dashboard: React.FC<Props> = ({ state }) => {
+const Dashboard: React.FC<Props> = ({ state, onBrandClick }) => {
   const { t } = useLanguage();
   const { inventory, monthlyGoal = 1000 } = state;
 
@@ -85,6 +86,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
     });
     const dayStats = orderedDays.map(day => dayData[day]);
 
+    const lowStockItems = inStockItems.filter(i => (i.quantity || 1) <= (i.minStockThreshold || 0));
+
     return {
       totalProfit,
       inStockCount: inStockItems.length,
@@ -94,7 +97,8 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       monthlyStats,
       brandStats,
       categoryStats,
-      dayStats
+      dayStats,
+      lowStockItems
     };
   }, [inventory, monthlyGoal]);
 
@@ -162,6 +166,28 @@ const Dashboard: React.FC<Props> = ({ state }) => {
           </div>
       </div>
 
+      {stats.lowStockItems.length > 0 && (
+        <div className="bg-red-50 dark:bg-red-900/20 p-8 rounded-[32px] border border-red-100 dark:border-red-800/50 shadow-sm">
+            <h3 className="text-sm font-black uppercase text-red-600 dark:text-red-400 mb-6 flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5" /> Alertes Stock Bas
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {stats.lowStockItems.map(item => (
+                    <div key={item.id} className="bg-white dark:bg-[#1E293B] p-4 rounded-2xl border border-red-100 dark:border-red-800/30 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-black text-slate-900 dark:text-white">{item.name}</p>
+                            <p className="text-[10px] font-bold text-slate-400">{item.brand} • {item.size || 'N/A'}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-lg font-black text-red-600 dark:text-red-400">{item.quantity || 1}</p>
+                            <p className="text-[9px] font-black uppercase text-red-400/60">En stock</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+      )}
+
       <div className="bg-white dark:bg-[#0F172A] p-10 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm">
           <h3 className="text-sm font-black uppercase text-slate-900 dark:text-white mb-10 flex items-center gap-3">
               <TrendingUp className="w-5 h-5 text-indigo-500" /> {t.dashboard.profitability_chart}
@@ -225,7 +251,12 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                               labelLine={false}
                           >
                               {stats.brandStats.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={['#4F46E5', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6'][index % 5]} />
+                                  <Cell 
+                                    key={`cell-${index}`} 
+                                    fill={['#4F46E5', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6'][index % 5]} 
+                                    onClick={() => onBrandClick && onBrandClick(entry.name)}
+                                    className={onBrandClick ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}
+                                  />
                               ))}
                           </Pie>
                           <Tooltip 

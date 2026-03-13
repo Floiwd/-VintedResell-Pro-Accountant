@@ -4,7 +4,7 @@ import {
   Wallet, Users, Trash2, Plus, Edit3, X, AlertCircle, Settings2, 
   ArrowUpRight, ArrowDownRight, Package, AlertTriangle, UserPlus, 
   Mail, Power, Hourglass, TrendingUp, BarChart3, PieChart, Target, CalendarDays,
-  Activity, Repeat, CalendarClock
+  Activity, Repeat, CalendarClock, Download
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -196,6 +196,41 @@ const Finances: React.FC<Props> = ({
   };
 
   // --- RENDER ---
+
+  const handleExportCSV = () => {
+    // Export Cashflow
+    const cashflowHeaders = ["Date", "Type", "Description", "Montant", "Associé"];
+    const cashflowRows = state.transfers.map(t => {
+      const typeLabel = t.type === 'DEPOSIT' ? 'Dépôt' : t.type === 'WITHDRAWAL' ? 'Retrait' : 'Ajustement';
+      const amount = (t.type === 'DEPOSIT' || t.type === 'ADJUSTMENT') ? `+${t.amount}` : `-${t.amount}`;
+      const member = t.memberId ? state.members.find(m => m.id === t.memberId)?.name || 'Inconnu' : 'Caisse Commune';
+      return [t.date, typeLabel, t.description, amount, member];
+    });
+    const cashflowCsv = [cashflowHeaders, ...cashflowRows].map(e => e.join(",")).join("\n");
+    const cashflowBlob = new Blob([cashflowCsv], { type: 'text/csv;charset=utf-8;' });
+    const cashflowUrl = URL.createObjectURL(cashflowBlob);
+    const cashflowLink = document.createElement("a");
+    cashflowLink.href = cashflowUrl;
+    cashflowLink.setAttribute("download", `flux_tresorerie_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(cashflowLink);
+    cashflowLink.click();
+    document.body.removeChild(cashflowLink);
+
+    // Export Analytics (Brand Profit)
+    if (analytics) {
+      const analyticsHeaders = ["Marque", "Profit", "Nombre de Ventes"];
+      const analyticsRows = analytics.brandChartData.map(b => [b.name, b.profit.toFixed(2), b.count]);
+      const analyticsCsv = [analyticsHeaders, ...analyticsRows].map(e => e.join(",")).join("\n");
+      const analyticsBlob = new Blob([analyticsCsv], { type: 'text/csv;charset=utf-8;' });
+      const analyticsUrl = URL.createObjectURL(analyticsBlob);
+      const analyticsLink = document.createElement("a");
+      analyticsLink.href = analyticsUrl;
+      analyticsLink.setAttribute("download", `analytiques_marques_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(analyticsLink);
+      analyticsLink.click();
+      document.body.removeChild(analyticsLink);
+    }
+  };
 
   const renderAnalytics = () => {
       if (!analytics) return (
@@ -569,19 +604,28 @@ const Finances: React.FC<Props> = ({
               <h2 className="text-3xl md:text-4xl font-black tracking-tighter text-slate-900 dark:text-white uppercase italic">{t.finances.title}</h2>
               <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.3em] mt-1 md:mt-2">{t.finances.subtitle}</p>
           </div>
-          <div className="flex p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl w-full md:w-auto">
+          <div className="flex items-center gap-4 w-full md:w-auto">
               <button 
-                onClick={() => setView('cashflow')}
-                className={`flex-1 md:flex-none justify-center px-4 md:px-6 py-2.5 md:py-3 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${view === 'cashflow' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                onClick={handleExportCSV} 
+                className="p-3 md:p-4 bg-slate-100 dark:bg-slate-800 rounded-[18px] md:rounded-[22px] text-slate-500 hover:bg-slate-200 transition-all"
+                title="Exporter en CSV"
               >
-                  <Wallet className="w-4 h-4" /> {t.finances.tab_cashflow}
+                <Download className="w-4 h-4 md:w-5 md:h-5" />
               </button>
-              <button 
-                onClick={() => setView('analytics')}
-                className={`flex-1 md:flex-none justify-center px-4 md:px-6 py-2.5 md:py-3 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${view === 'analytics' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                  <BarChart3 className="w-4 h-4" /> {t.finances.tab_analytics}
-              </button>
+              <div className="flex p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl w-full md:w-auto">
+                  <button 
+                    onClick={() => setView('cashflow')}
+                    className={`flex-1 md:flex-none justify-center px-4 md:px-6 py-2.5 md:py-3 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${view === 'cashflow' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                      <Wallet className="w-4 h-4" /> {t.finances.tab_cashflow}
+                  </button>
+                  <button 
+                    onClick={() => setView('analytics')}
+                    className={`flex-1 md:flex-none justify-center px-4 md:px-6 py-2.5 md:py-3 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${view === 'analytics' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                      <BarChart3 className="w-4 h-4" /> {t.finances.tab_analytics}
+                  </button>
+              </div>
           </div>
       </div>
 
