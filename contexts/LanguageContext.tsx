@@ -170,6 +170,12 @@ export const translations = {
       VENDU: "Vendu",
       EN_COURS: "En cours",
       RETOURNÉ: "Retourné",
+    },
+    subStatus: {
+      A_PHOTOGRAPHIER: "À photographier",
+      EN_LIGNE: "En ligne",
+      A_EXPEDIER: "À expédier",
+      AUCUN: "Aucun",
     }
   },
   en: {
@@ -339,6 +345,12 @@ export const translations = {
       VENDU: "Sold",
       EN_COURS: "Pending",
       RETOURNÉ: "Returned",
+    },
+    subStatus: {
+      A_PHOTOGRAPHIER: "To photograph",
+      EN_LIGNE: "Online",
+      A_EXPEDIER: "To ship",
+      AUCUN: "None",
     }
   }
 };

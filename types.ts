@@ -7,6 +7,13 @@ export enum ItemStatus {
   RETURNED = 'RETOURNÉ'
 }
 
+export enum ItemSubStatus {
+  TO_PHOTOGRAPH = 'A_PHOTOGRAPHIER',
+  ONLINE = 'EN_LIGNE',
+  TO_SHIP = 'A_EXPEDIER',
+  NONE = 'AUCUN'
+}
+
 export enum ItemCondition {
   NEW_WITH_TAG = 'NEUF_ETIQUETTE',
   NEW_NO_TAG = 'NEUF_SANS_ETIQUETTE',
@@ -31,6 +38,7 @@ export interface InventoryItem {
   shippingCost: number;
   boostCost: number;
   status: ItemStatus;
+  subStatus?: ItemSubStatus;
   purchaseDate: string;
   receptionDate?: string;
   postedDate?: string;

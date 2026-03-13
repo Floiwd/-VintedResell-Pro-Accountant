@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  LineChart, Line, PieChart, Pie, Legend
 } from 'recharts';
 import { AppState, ItemStatus } from '../types';
 import { 
@@ -32,12 +33,47 @@ const Dashboard: React.FC<Props> = ({ state }) => {
       .sort((a, b) => b.profit - a.profit)
       .slice(0, 15);
 
+    // Monthly Stats (Revenue & Profit)
+    const monthlyData: Record<string, { month: string, revenue: number, profit: number }> = {};
+    soldItems.forEach(item => {
+      if (!item.saleDate) return;
+      const date = new Date(item.saleDate);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { month: monthKey, revenue: 0, profit: 0 };
+      }
+      monthlyData[monthKey].revenue += item.salePrice;
+      monthlyData[monthKey].profit += (item.salePrice - item.purchasePrice - (item.boostCost || 0));
+    });
+    const monthlyStats = Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month));
+
+    // Brand Stats
+    const brandData: Record<string, { name: string, value: number }> = {};
+    soldItems.forEach(item => {
+      const brand = item.brand || 'Inconnu';
+      if (!brandData[brand]) brandData[brand] = { name: brand, value: 0 };
+      brandData[brand].value += 1;
+    });
+    const brandStats = Object.values(brandData).sort((a, b) => b.value - a.value).slice(0, 5);
+
+    // Category Stats
+    const categoryData: Record<string, { name: string, value: number }> = {};
+    soldItems.forEach(item => {
+      const cat = item.category || 'Inconnu';
+      if (!categoryData[cat]) categoryData[cat] = { name: cat, value: 0 };
+      categoryData[cat].value += 1;
+    });
+    const categoryStats = Object.values(categoryData).sort((a, b) => b.value - a.value).slice(0, 5);
+
     return {
       totalProfit,
       inStockCount: inStockItems.length,
       avgMargin,
       goalProgress: Math.min((totalProfit / monthlyGoal) * 100, 100),
-      profitabilityByItem
+      profitabilityByItem,
+      monthlyStats,
+      brandStats,
+      categoryStats
     };
   }, [inventory, monthlyGoal]);
 
@@ -123,6 +159,61 @@ const Dashboard: React.FC<Props> = ({ state }) => {
                       </Bar>
                   </BarChart>
               </ResponsiveContainer>
+          </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-[#0F172A] p-10 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm">
+              <h3 className="text-sm font-black uppercase text-slate-900 dark:text-white mb-10 flex items-center gap-3">
+                  <Activity className="w-5 h-5 text-emerald-500" /> Évolution du CA & Bénéfices
+              </h3>
+              <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={stats.monthlyStats} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} />
+                          <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} />
+                          <Tooltip 
+                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
+                            itemStyle={{ fontWeight: 'bold' }}
+                          />
+                          <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold', paddingTop: '20px' }} />
+                          <Line type="monotone" dataKey="revenue" name="Chiffre d'Affaires" stroke="#10B981" strokeWidth={4} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                          <Line type="monotone" dataKey="profit" name="Bénéfice" stroke="#4F46E5" strokeWidth={4} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                      </LineChart>
+                  </ResponsiveContainer>
+              </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#0F172A] p-10 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm">
+              <h3 className="text-sm font-black uppercase text-slate-900 dark:text-white mb-10 flex items-center gap-3">
+                  <Award className="w-5 h-5 text-amber-500" /> Top Marques
+              </h3>
+              <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                          <Pie
+                              data={stats.brandStats}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={100}
+                              paddingAngle={5}
+                              dataKey="value"
+                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                              labelLine={false}
+                          >
+                              {stats.brandStats.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={['#4F46E5', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6'][index % 5]} />
+                              ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
+                            itemStyle={{ fontWeight: 'bold' }}
+                          />
+                      </PieChart>
+                  </ResponsiveContainer>
+              </div>
           </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { InventoryItem, ItemStatus, ItemCondition, FilterState, CatalogItem } from '../types';
+import { InventoryItem, ItemStatus, ItemSubStatus, ItemCondition, FilterState, CatalogItem } from '../types';
 import { CATEGORIES, CONDITIONS, SIZES, BRANDS } from '../constants';
 import { 
   Plus, Search, Edit2, Trash2, X, Rocket, Image as ImageIcon, 
@@ -58,6 +58,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
   // Form State
   const [isBoosted, setIsBoosted] = useState(false);
   const [itemStatusInForm, setItemStatusInForm] = useState<ItemStatus>(ItemStatus.IN_STOCK);
+  const [subStatusInForm, setSubStatusInForm] = useState<ItemSubStatus>(ItemSubStatus.NONE);
   const [draftDisplayId, setDraftDisplayId] = useState('');
   const [draftName, setDraftName] = useState('');
   const [draftBrand, setDraftBrand] = useState('');
@@ -85,6 +86,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
   const [lotCondition, setLotCondition] = useState<ItemCondition>(ItemCondition.VERY_GOOD);
   const [lotPurchaseDate, setLotPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
   const [lotStatus, setLotStatus] = useState<ItemStatus>(ItemStatus.IN_STOCK);
+  const [lotSubStatus, setLotSubStatus] = useState<ItemSubStatus>(ItemSubStatus.NONE);
 
   // Génération automatique intelligente de l'ID suivant
   const generateNextId = (offset = 0) => {
@@ -144,6 +146,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
               size: lotSize,
               condition: lotCondition,
               status: lotStatus,
+              subStatus: lotSubStatus,
               purchasePrice: pricePerItem,
               displaySalePrice: 0,
               salePrice: 0,
@@ -165,7 +168,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
       setDraftName(''); setDraftBrand(''); 
       setDraftSize(''); setSalePriceValue(''); setPurchasePriceValue(''); setDisplaySalePriceValue('');
       setBoostCostValue(''); setIsBoosted(false);
-      setItemStatusInForm(ItemStatus.IN_STOCK); setImageUrl('');
+      setItemStatusInForm(ItemStatus.IN_STOCK); setSubStatusInForm(ItemSubStatus.NONE); setImageUrl('');
       setPurchaseDate(new Date().toISOString().split('T')[0]);
       setReceptionDate(''); setSaleDate('');
   };
@@ -181,6 +184,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
       setIsBoosted(item.boostCost > 0);
       setBoostCostValue(item.boostCost > 0 ? item.boostCost.toString() : '');
       setItemStatusInForm(item.status);
+      setSubStatusInForm(item.subStatus || ItemSubStatus.NONE);
       setImageUrl(item.imageUrl || '');
       setPurchaseDate(item.purchaseDate);
       setReceptionDate(item.receptionDate || '');
@@ -197,6 +201,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
       receptionDate: undefined,
       saleDate: undefined,
       status: ItemStatus.IN_STOCK,
+      subStatus: ItemSubStatus.NONE,
     };
     onAdd(newItem);
   };
@@ -265,6 +270,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
           size: draftSize,
           condition: draftCondition,
           status: itemStatusInForm,
+          subStatus: subStatusInForm,
           purchasePrice: Number(purchasePriceValue),
           displaySalePrice: Number(displaySalePriceValue),
           salePrice: Number(salePriceValue),
@@ -444,13 +450,21 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                       <span className="text-sm md:text-base font-black text-slate-900 dark:text-white">{item.salePrice}€</span>
                                       <span className="text-[8px] bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 rounded-md border border-slate-100 dark:border-slate-800 font-black text-slate-400">{item.size || 'TU'}</span>
                                   </div>
-                                  <div className="flex items-center gap-1.5 md:gap-2 mt-1.5">
+                                  <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-1.5">
                                       <div className={`px-1.5 md:px-2 py-1 rounded-lg text-[8px] font-black flex items-center gap-1 w-fit border ${margin >= 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
                                           <Scale className="w-2.5 h-2.5" /> +{margin.toFixed(0)}€
                                       </div>
                                       {rotation !== null && (
                                           <div className="px-1.5 md:px-2 py-1 rounded-lg text-[8px] font-black flex items-center gap-1 bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
                                               <Clock className="w-2.5 h-2.5" /> {rotation}{t.inventory.item_card.days}
+                                          </div>
+                                      )}
+                                      <div className="px-1.5 md:px-2 py-1 rounded-lg text-[8px] font-black flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
+                                          {t.status[item.status] || item.status}
+                                      </div>
+                                      {item.subStatus && item.subStatus !== ItemSubStatus.NONE && (
+                                          <div className="px-1.5 md:px-2 py-1 rounded-lg text-[8px] font-black flex items-center gap-1 bg-indigo-50 text-indigo-600 border border-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800">
+                                              {t.subStatus[item.subStatus] || item.subStatus}
                                           </div>
                                       )}
                                   </div>
@@ -591,9 +605,14 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                      <div className="space-y-6">
                                          <div className="bg-slate-900/50 p-6 rounded-[32px] border border-slate-800 shadow-inner">
                                              <label className="block text-[10px] font-black uppercase text-slate-500 mb-4 tracking-[0.2em] flex items-center gap-3"><Tag className="w-4 h-4 text-indigo-500" /> {t.inventory.form.status}</label>
-                                             <select value={itemStatusInForm} onChange={e => handleStatusChange(e.target.value as ItemStatus)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-[20px] p-4 text-white font-black text-sm outline-none focus:border-indigo-500 cursor-pointer appearance-none">
-                                                 {Object.values(ItemStatus).map(s => <option key={s} value={s}>{t.status[s] || s}</option>)}
-                                             </select>
+                                             <div className="flex flex-col gap-4">
+                                                 <select value={itemStatusInForm} onChange={e => handleStatusChange(e.target.value as ItemStatus)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-[20px] p-4 text-white font-black text-sm outline-none focus:border-indigo-500 cursor-pointer appearance-none">
+                                                     {Object.values(ItemStatus).map(s => <option key={s} value={s}>{t.status[s] || s}</option>)}
+                                                 </select>
+                                                 <select value={subStatusInForm} onChange={e => setSubStatusInForm(e.target.value as ItemSubStatus)} className="w-full bg-slate-800 border-2 border-slate-700 rounded-[20px] p-4 text-white font-black text-sm outline-none focus:border-indigo-500 cursor-pointer appearance-none">
+                                                     {Object.values(ItemSubStatus).map(s => <option key={s} value={s}>{t.subStatus[s] || s}</option>)}
+                                                 </select>
+                                             </div>
                                          </div>
                                          
                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -827,10 +846,15 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                      <div className="bg-slate-900/50 p-4 rounded-[28px] border border-slate-800">
                                          <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Tag className="w-3.5 h-3.5" /> Statut du lot</label>
-                                         <select value={lotStatus} onChange={e => setLotStatus(e.target.value as ItemStatus)} className="w-full bg-transparent text-white font-black text-xs outline-none appearance-none cursor-pointer">
-                                             <option value={ItemStatus.IN_STOCK}>En stock</option>
-                                             <option value={ItemStatus.TRANSIT}>En transit</option>
-                                         </select>
+                                         <div className="flex flex-col gap-2">
+                                             <select value={lotStatus} onChange={e => setLotStatus(e.target.value as ItemStatus)} className="w-full bg-transparent text-white font-black text-xs outline-none appearance-none cursor-pointer">
+                                                 <option value={ItemStatus.IN_STOCK}>En stock</option>
+                                                 <option value={ItemStatus.TRANSIT}>En transit</option>
+                                             </select>
+                                             <select value={lotSubStatus} onChange={e => setLotSubStatus(e.target.value as ItemSubStatus)} className="w-full bg-transparent text-white font-black text-xs outline-none appearance-none cursor-pointer">
+                                                 {Object.values(ItemSubStatus).map(s => <option key={s} value={s}>{t.subStatus[s] || s}</option>)}
+                                             </select>
+                                         </div>
                                      </div>
                                      <div className="bg-slate-900/50 p-4 rounded-[28px] border border-slate-800">
                                          <label className="block text-[9px] font-black uppercase text-slate-500 mb-3 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Date d'achat</label>
