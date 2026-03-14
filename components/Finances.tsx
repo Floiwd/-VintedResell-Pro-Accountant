@@ -248,7 +248,7 @@ const Finances: React.FC<Props> = ({
                      <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform"><Target className="w-24 h-24" /></div>
                      <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-2">{t.finances.analytics.brand_star}</p>
                      <h3 className="text-2xl md:text-3xl font-black mb-1">{analytics.brandChartData[0]?.name || 'N/A'}</h3>
-                     <p className="text-[10px] md:text-xs font-bold opacity-80">+{analytics.brandChartData[0]?.profit.toFixed(0)}€ {t.inventory.item_card.profit.toLowerCase()}</p>
+                     <p className="text-[10px] md:text-xs font-bold opacity-80">+{analytics.brandChartData[0]?.profit.toFixed(2)}€ {t.inventory.item_card.profit.toLowerCase()}</p>
                  </div>
                  <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[24px] md:rounded-[32px] p-6 md:p-8 relative overflow-hidden">
                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">{t.finances.analytics.best_day}</p>
@@ -259,7 +259,7 @@ const Finances: React.FC<Props> = ({
                  </div>
                  <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[24px] md:rounded-[32px] p-6 md:p-8 relative overflow-hidden">
                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">{t.finances.analytics.total_margin}</p>
-                     <h3 className="text-2xl md:text-3xl font-black text-emerald-500 mb-1">+{netProfitFromSales.toFixed(0)}€</h3>
+                     <h3 className="text-2xl md:text-3xl font-black text-emerald-500 mb-1">+{netProfitFromSales.toFixed(2)}€</h3>
                      <p className="text-[10px] md:text-xs font-bold text-slate-500">Sur {soldItems.length} articles vendus</p>
                  </div>
              </div>
@@ -275,8 +275,9 @@ const Finances: React.FC<Props> = ({
                              <BarChart data={analytics.brandChartData} margin={{top: 0, right: 0, left: -20, bottom: 0}}>
                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
                                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} interval={0} />
-                                 <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
+                                 <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} tickFormatter={(value) => value.toFixed(2)} />
                                  <Tooltip 
+                                    formatter={(value: number) => value.toFixed(2)}
                                     cursor={{fill: 'transparent'}}
                                     contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.2)'}}
                                  />
@@ -309,7 +310,10 @@ const Finances: React.FC<Props> = ({
                                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                      ))}
                                  </Pie>
-                                 <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.2)'}} />
+                                 <Tooltip 
+                                     formatter={(value: number) => value.toFixed(2)}
+                                     contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.2)'}} 
+                                 />
                                  <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" wrapperStyle={{fontSize: '11px', fontWeight: 'bold'}} />
                              </RePieChart>
                          </ResponsiveContainer>
@@ -326,8 +330,12 @@ const Finances: React.FC<Props> = ({
                              <BarChart data={analytics.sizeChartData}>
                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
                                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
-                                 <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
-                                 <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '12px'}} />
+                                 <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} tickFormatter={(value) => value.toFixed(2)} />
+                                 <Tooltip 
+                                     formatter={(value: number) => value.toFixed(2)}
+                                     cursor={{fill: 'transparent'}} 
+                                     contentStyle={{borderRadius: '12px'}} 
+                                 />
                                  <Bar dataKey="profit" radius={[4, 4, 0, 0]} fill="#F59E0B" barSize={30} />
                              </BarChart>
                          </ResponsiveContainer>
@@ -344,7 +352,11 @@ const Finances: React.FC<Props> = ({
                              <BarChart data={analytics.dayChartData}>
                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
                                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
-                                 <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '12px'}} />
+                                 <Tooltip 
+                                     formatter={(value: number) => value.toFixed(2)}
+                                     cursor={{fill: 'transparent'}} 
+                                     contentStyle={{borderRadius: '12px'}} 
+                                 />
                                  <Bar dataKey="count" radius={[10, 10, 10, 10]} fill="#EC4899" barSize={12} />
                              </BarChart>
                          </ResponsiveContainer>

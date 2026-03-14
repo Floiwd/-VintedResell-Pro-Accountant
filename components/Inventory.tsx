@@ -476,7 +476,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                   </div>
                                   <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-1.5">
                                       <div className={`px-1.5 md:px-2 py-1 rounded-lg text-[8px] font-black flex items-center gap-1 w-fit border ${margin >= 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
-                                          <Scale className="w-2.5 h-2.5" /> +{margin.toFixed(0)}€
+                                          <Scale className="w-2.5 h-2.5" /> +{margin.toFixed(2)}€
                                       </div>
                                       {rotation !== null && (
                                           <div className="px-1.5 md:px-2 py-1 rounded-lg text-[8px] font-black flex items-center gap-1 bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">

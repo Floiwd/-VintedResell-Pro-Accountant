@@ -108,9 +108,9 @@ const Dashboard: React.FC<Props> = ({ state, onBrandClick }) => {
         <div className="bg-white dark:bg-slate-900 p-4 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl">
           <p className="text-[10px] font-black uppercase text-slate-400 mb-2">{label}</p>
           <div className="space-y-1">
-            <p className="text-xs font-bold text-slate-500">{t.inventory.item_card.purchase}: {payload[0].payload.purchase}€</p>
-            <p className="text-xs font-bold text-slate-500">{t.inventory.item_card.sold}: {payload[0].payload.sale}€</p>
-            <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">{t.inventory.item_card.profit}: {payload[0].value.toFixed(2)}€</p>
+            <p className="text-xs font-bold text-slate-500">{t.inventory.item_card.purchase}: {Number(payload[0].payload.purchase).toFixed(2)}€</p>
+            <p className="text-xs font-bold text-slate-500">{t.inventory.item_card.sold}: {Number(payload[0].payload.sale).toFixed(2)}€</p>
+            <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">{t.inventory.item_card.profit}: {Number(payload[0].value).toFixed(2)}€</p>
           </div>
         </div>
       );
@@ -141,7 +141,7 @@ const Dashboard: React.FC<Props> = ({ state, onBrandClick }) => {
           <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden">
               <div className="absolute right-8 top-8 p-3 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl text-emerald-500"><Target className="w-6 h-6" /></div>
               <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-4">{t.dashboard.goal}</p>
-              <h3 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white mb-4">{stats.totalProfit.toFixed(0)}€ <span className="text-sm font-bold opacity-30">/ {monthlyGoal}€</span></h3>
+              <h3 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white mb-4">{stats.totalProfit.toFixed(2)}€ <span className="text-sm font-bold opacity-30">/ {monthlyGoal}€</span></h3>
               <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                   <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${stats.goalProgress}%` }} />
               </div>
@@ -152,7 +152,7 @@ const Dashboard: React.FC<Props> = ({ state, onBrandClick }) => {
                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">{t.dashboard.avg_margin}</p>
                   <Award className="w-5 h-5 text-indigo-500" />
               </div>
-              <h3 className="text-3xl font-black tracking-tighter text-emerald-500">+{stats.avgMargin.toFixed(0)}€</h3>
+              <h3 className="text-3xl font-black tracking-tighter text-emerald-500">+{stats.avgMargin.toFixed(2)}€</h3>
               <p className="text-[10px] font-bold text-slate-300 uppercase mt-2">{t.dashboard.per_sale}</p>
           </div>
 
@@ -197,7 +197,7 @@ const Dashboard: React.FC<Props> = ({ state, onBrandClick }) => {
                   <BarChart data={stats.profitabilityByItem} margin={{ top: 20, right: 30, left: 0, bottom: 40 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 'bold', fill: '#94a3b8'}} interval={0} angle={-45} textAnchor="end" />
-                      <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} />
+                      <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} tickFormatter={(value) => value.toFixed(2)} />
                       <Tooltip content={<CustomTooltip />} cursor={{fill: 'transparent'}} />
                       <Bar dataKey="profit" radius={[8, 8, 0, 0]} barSize={32}>
                         {stats.profitabilityByItem.map((entry, index) => (
@@ -219,8 +219,9 @@ const Dashboard: React.FC<Props> = ({ state, onBrandClick }) => {
                       <LineChart data={stats.monthlyStats} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                           <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} />
-                          <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} />
+                          <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} tickFormatter={(value) => value.toFixed(2)} />
                           <Tooltip 
+                            formatter={(value: number) => value.toFixed(2)}
                             contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
                             itemStyle={{ fontWeight: 'bold' }}
                           />
@@ -247,7 +248,7 @@ const Dashboard: React.FC<Props> = ({ state, onBrandClick }) => {
                               outerRadius={100}
                               paddingAngle={5}
                               dataKey="value"
-                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(2)}%`}
                               labelLine={false}
                           >
                               {stats.brandStats.map((entry, index) => (
@@ -260,6 +261,7 @@ const Dashboard: React.FC<Props> = ({ state, onBrandClick }) => {
                               ))}
                           </Pie>
                           <Tooltip 
+                            formatter={(value: number) => value.toFixed(2)}
                             contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
                             itemStyle={{ fontWeight: 'bold' }}
                           />
@@ -278,8 +280,9 @@ const Dashboard: React.FC<Props> = ({ state, onBrandClick }) => {
                   <LineChart data={stats.dayStats} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} />
-                      <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} />
+                      <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} tickFormatter={(value) => value.toFixed(2)} />
                       <Tooltip 
+                        formatter={(value: number) => value.toFixed(2)}
                         contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
                         itemStyle={{ fontWeight: 'bold' }}
                       />

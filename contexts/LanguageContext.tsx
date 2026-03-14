@@ -170,6 +170,7 @@ export const translations = {
       VENDU: "Vendu",
       EN_COURS: "En cours",
       RETOURNÉ: "Retourné",
+      LITIGE: "Litige",
     },
     subStatus: {
       A_PHOTOGRAPHIER: "À photographier",
@@ -345,6 +346,7 @@ export const translations = {
       VENDU: "Sold",
       EN_COURS: "Pending",
       RETOURNÉ: "Returned",
+      LITIGE: "Dispute",
     },
     subStatus: {
       A_PHOTOGRAPHIER: "To photograph",

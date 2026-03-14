@@ -129,7 +129,8 @@ export default function PricingGuide({ inventory, onBrandClick }: Props) {
     [ItemStatus.PAYMENT_PENDING]: 2, 
     [ItemStatus.SOLD]: 3,
     [ItemStatus.PENDING]: 4,
-    [ItemStatus.RETURNED]: 5 
+    [ItemStatus.RETURNED]: 5,
+    [ItemStatus.DISPUTE]: 6
   };
 
   return (
@@ -221,7 +222,7 @@ export default function PricingGuide({ inventory, onBrandClick }: Props) {
                     </div>
                     <div className="text-right">
                         <div className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">{t.pricing.avg_price}</div>
-                        <div className="text-2xl font-black text-slate-900 dark:text-white">{group.avgPrice.toFixed(0)}€</div>
+                        <div className="text-2xl font-black text-slate-900 dark:text-white">{group.avgPrice.toFixed(2)}€</div>
                     </div>
                 </div>
 
@@ -232,7 +233,7 @@ export default function PricingGuide({ inventory, onBrandClick }: Props) {
                     </div>
                     <div className="bg-slate-50 dark:bg-[#0F172A] p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
                         <div className="text-[9px] font-black text-slate-400 uppercase mb-2 flex items-center gap-1.5"><Scale className="w-3.5 h-3.5" /> {t.pricing.avg_margin}</div>
-                        <div className="text-lg font-black text-emerald-500">+{(group.totalProfit / Math.max(1, group.totalVolume)).toFixed(0)}€</div>
+                        <div className="text-lg font-black text-emerald-500">+{(group.totalProfit / Math.max(1, group.totalVolume)).toFixed(2)}€</div>
                     </div>
                 </div>
 
