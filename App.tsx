@@ -51,6 +51,7 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'finances' | 'pricing'>('dashboard');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [loadError, setLoadError] = useState(false);
+  const [cachedOrgId, setCachedOrgId] = useState<string | null>(null);
   
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('vpro_theme') === 'dark';
@@ -140,6 +141,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   const getOrgId = async (userId: string) => {
+    if (cachedOrgId) return cachedOrgId;
     let orgId = userId;
     try {
       const profileDoc = await getDoc(doc(db, 'profiles', userId));
@@ -157,6 +159,7 @@ const AppContent: React.FC = () => {
         };
         await setDoc(doc(db, 'profiles', userId), initialProfile);
       }
+      setCachedOrgId(orgId);
     } catch (e) {
       console.warn("Error fetching profile, defaulting to userId:", e);
     }
@@ -166,6 +169,7 @@ const AppContent: React.FC = () => {
   const saveToCloud = async (newState: AppState, manual = false) => {
     if ((!isInitialized || isInitialLoad.current || loadError) && !manual) return;
     setSaveStatus('saving');
+    let targetOrgId = 'unknown';
     try {
       const user = auth.currentUser;
       if (!user) {
@@ -174,6 +178,7 @@ const AppContent: React.FC = () => {
           return;
       }
       const orgId = await getOrgId(user.uid);
+      targetOrgId = orgId;
       
       const inventoryRef = doc(db, 'inventories', orgId);
       await setDoc(inventoryRef, {
@@ -189,7 +194,7 @@ const AppContent: React.FC = () => {
       console.error("Sync error:", err);
       if (manual) alert("Erreur de sauvegarde: " + (err.message || "Erreur inconnue"));
       setSaveStatus('error');
-      // handleFirestoreError(err, OperationType.WRITE, 'inventories');
+      handleFirestoreError(err, OperationType.WRITE, `inventories/${targetOrgId}`);
     }
   };
 
@@ -227,7 +232,7 @@ const AppContent: React.FC = () => {
     } catch (err: any) {
       console.error("Load error:", err);
       setLoadError(true);
-      // handleFirestoreError(err, OperationType.GET, 'inventories');
+      handleFirestoreError(err, OperationType.GET, 'inventories');
     } finally {
       setLoading(false);
     }

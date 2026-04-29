@@ -8,7 +8,7 @@ service cloud.firestore {
 
     // Helper functions
     function isSignedIn() {
-      return request.auth != null;
+      return request.auth != null && request.auth.token.email_verified == true;
     }
 
     function isOwner(userId) {
@@ -42,25 +42,24 @@ service cloud.firestore {
 
     // Inventories
     match /inventories/{inventoryId} {
-      // For simplicity in this app, inventoryId is currently expected to be linked to organizationId
-      // The app uses organization_id which defaults to userId if not found.
-      
       function canAccessInventory() {
-        // In a more complex app, we'd check if the user belongs to the organization
-        // For now, we'll allow if the inventory document's organizationId matches user's uid or if we can verify membership
-        return isSignedIn() && (incoming().organizationId == request.auth.uid || existing().organizationId == request.auth.uid);
+        return isSignedIn() && (
+          inventoryId == request.auth.uid || 
+          (resource != null && existing().organizationId == request.auth.uid) ||
+          (request.resource != null && incoming().organizationId == request.auth.uid)
+        );
       }
 
-      allow get: if isSignedIn() && existing().organizationId == request.auth.uid;
+      allow get: if canAccessInventory();
       allow list: if isSignedIn() && resource.data.organizationId == request.auth.uid;
       
-      allow create: if isSignedIn() 
+      allow create: if canAccessInventory() 
         && incoming().organizationId == request.auth.uid
         && incoming().state is map
         && incoming().updatedAt == request.time;
         
-      allow update: if isSignedIn()
-        && existing().organizationId == request.auth.uid
+      allow update: if canAccessInventory()
+        && (resource != null && existing().organizationId == request.auth.uid)
         && incoming().organizationId == existing().organizationId
         && (
           incoming().diff(existing()).affectedKeys().hasOnly(['state', 'updatedAt'])

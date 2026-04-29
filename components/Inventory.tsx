@@ -5,8 +5,10 @@ import {
   Plus, Search, Edit2, Trash2, X, Rocket, Image as ImageIcon, 
   SlidersHorizontal, Scale, Tag, Hash, 
   DollarSign, Download, Copy, ImagePlus, Loader2,
-  ArrowUpDown, Calendar, Clock, ChevronDown, RefreshCw, Clipboard, Sparkles, Package
+  ArrowUpDown, Calendar, Clock, ChevronDown, RefreshCw, Clipboard, Sparkles, Package,
+  FileText
 } from 'lucide-react';
+import { parse as parseCSV, ParseResult, ParseError } from 'papaparse';
 import ModelSelector from './ModelSelector';
 import { auth, db } from '../lib/firebase';
 import { parseItemDescription } from '../services/geminiService';
@@ -33,7 +35,9 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isParserOpen, setIsParserOpen] = useState(false); // Modal Parser
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
   const [parserText, setParserText] = useState('');
+  const [csvText, setCsvText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
 
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
@@ -339,6 +343,60 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
       }
   };
 
+  const handleCsvImport = () => {
+    if (!csvText) return;
+    (parseCSV as any)(csvText, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results: ParseResult<any>) => {
+        const { data } = results;
+        let count = 0;
+        data.forEach((row: any, index: number) => {
+          // Map common column names
+          const name = row.name || row.nom || row.title || row.titre || row.article || "";
+          const brand = row.brand || row.marque || "";
+          const purchasePrice = parseFloat(row.purchasePrice || row.prix_achat || row.achat || row.cost || "0");
+          const salePrice = parseFloat(row.salePrice || row.prix_vente || row.vente || row.price || "0");
+          const category = row.category || row.categorie || row.type || CATEGORIES[0];
+          const size = row.size || row.taille || "";
+          const condition = row.condition || row.etat || ItemCondition.VERY_GOOD;
+          const displayId = row.displayId || row.id || row.reference || row.ref || generateNextId(count);
+
+          if (name) {
+            const item: InventoryItem = {
+              id: crypto.randomUUID(),
+              displayId: displayId.toString(),
+              name: name.toString(),
+              brand: brand.toString(),
+              category: category.toString(),
+              size: size.toString(),
+              condition: condition as ItemCondition,
+              status: ItemStatus.IN_STOCK,
+              subStatus: ItemSubStatus.NONE,
+              purchasePrice: isNaN(purchasePrice) ? 0 : purchasePrice,
+              displaySalePrice: isNaN(salePrice) ? 0 : salePrice,
+              salePrice: isNaN(salePrice) ? 0 : salePrice,
+              boostCost: 0,
+              purchaseDate: new Date().toISOString().split('T')[0],
+              receptionDate: new Date().toISOString().split('T')[0],
+              fees: 0,
+              shippingCost: 0,
+              imageUrl: ''
+            };
+            onAdd(item);
+            count++;
+          }
+        });
+        alert(`${count} articles importés avec succès.`);
+        setIsCsvModalOpen(false);
+        setCsvText('');
+      },
+      error: (error: ParseError) => {
+        alert("Erreur lors de l'import CSV: " + error.message);
+      }
+    });
+  };
+
   const filteredItems = useMemo(() => {
     let result = inventory.filter(i => {
       if (subView === 'sales' && i.status !== ItemStatus.SOLD) return false;
@@ -424,6 +482,11 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                       <span className="hidden md:inline text-xs font-black uppercase">Lot</span>
                   </button>
 
+                  <button onClick={() => setIsCsvModalOpen(true)} className="flex-1 md:flex-none justify-center p-3 md:p-4 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-[18px] md:rounded-[22px] border border-orange-100 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-all flex items-center gap-2">
+                       <FileText className="w-4 h-4 md:w-5 md:h-5" />
+                       <span className="hidden md:inline text-xs font-black uppercase">Import CSV</span>
+                  </button>
+
                   <button onClick={handleExportCSV} title={t.inventory.export_csv} className="p-3 md:p-4 bg-slate-100 dark:bg-slate-800 rounded-[18px] md:rounded-[22px] text-slate-500 hover:bg-slate-200 transition-all"><Download className="w-4 h-4 md:w-5 md:h-5" /></button>
                   <button onClick={() => setIsFilterDrawerOpen(true)} className={`p-3 md:p-5 rounded-[18px] md:rounded-[22px] transition-all relative border-2 ${ (filters.sizes.length + filters.status.length + filters.brands.length + filters.categories.length) > 0 ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 border-transparent text-slate-500 hover:bg-slate-200'}`}><SlidersHorizontal className="w-4 h-4 md:w-5 md:h-5" /></button>
                   <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="flex-[2] md:flex-none md:w-auto px-4 md:px-10 py-3 md:py-5 bg-indigo-600 text-white rounded-[18px] md:rounded-[24px] font-black uppercase text-[10px] md:text-xs shadow-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 md:gap-4"><Plus className="w-4 h-4 md:w-5 md:h-5" /> <span className="hidden sm:inline">{t.common.add}</span></button>
@@ -496,6 +559,46 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                 })}
             </div>
         </div>
+
+        {/* Modal Import CSV */}
+        {isCsvModalOpen && (
+             <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[500] flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+                <div className="bg-white dark:bg-slate-900 w-full h-[100dvh] sm:h-auto sm:max-w-2xl sm:rounded-[32px] shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col animate-in zoom-in-95 duration-200 overflow-hidden">
+                    <div className="px-6 md:px-8 py-5 md:py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900 shrink-0">
+                        <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                           <FileText className="w-5 h-5 text-orange-500" /> Import CSV
+                        </h3>
+                        <button onClick={() => setIsCsvModalOpen(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors"><X className="w-5 h-5 text-slate-500" /></button>
+                    </div>
+                    <div className="p-6 md:p-8 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
+                        <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-2xl border border-orange-100 dark:border-orange-800/50">
+                            <p className="text-xs text-orange-800 dark:text-orange-200 font-bold uppercase tracking-wider mb-2">Instructions :</p>
+                            <p className="text-[10px] text-orange-700 dark:text-orange-300 font-medium leading-relaxed italic">
+                              Collez votre contenu CSV ci-dessous. La première ligne doit contenir les en-têtes.<br/>
+                              Colonnes reconnues : <span className="font-black">name, brand, purchasePrice, salePrice, category, size, condition</span>
+                            </p>
+                        </div>
+                        <textarea 
+                            value={csvText}
+                            onChange={e => setCsvText(e.target.value)}
+                            placeholder="name,brand,purchasePrice,salePrice&#10;Nike Dunk,Nike,45,120&#10;Veste Vintage,Levi's,15,45"
+                            className="w-full h-64 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 outline-none focus:border-orange-500 font-mono text-xs resize-none"
+                        />
+                    </div>
+                    <div className="p-6 md:p-8 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex gap-3 md:gap-4 shrink-0">
+                        <button onClick={() => setIsCsvModalOpen(false)} className="flex-1 px-4 md:px-6 py-3 md:py-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl md:rounded-2xl font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest text-[10px] md:text-xs hover:bg-slate-50 dark:hover:bg-slate-800">{t.common.cancel}</button>
+                        <button 
+                            onClick={handleCsvImport} 
+                            disabled={!csvText}
+                            className="flex-1 px-4 md:px-6 py-3 md:py-4 bg-orange-600 text-white rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-xl hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            <Download className="w-4 h-4" />
+                            Importer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
 
         {/* Modal Parser Vinted */}
         {isParserOpen && (
