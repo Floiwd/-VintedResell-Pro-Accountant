@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Profiles
+    match /profiles/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) 
+        && incoming().organizationId is string 
+        && incoming().email == request.auth.token.email
+        && incoming().keys().size() == 3;
+      allow update: if isOwner(userId) 
+        && incoming().organizationId == existing().organizationId
+        && incoming().email == existing().email
+        && incoming().diff(existing()).affectedKeys().hasOnly(['updatedAt']);
+    }
+
+    // Inventories
+    match /inventories/{inventoryId} {
+      // For simplicity in this app, inventoryId is currently expected to be linked to organizationId
+      // The app uses organization_id which defaults to userId if not found.
+      
+      function canAccessInventory() {
+        // In a more complex app, we'd check if the user belongs to the organization
+        // For now, we'll allow if the inventory document's organizationId matches user's uid or if we can verify membership
+        return isSignedIn() && (incoming().organizationId == request.auth.uid || existing().organizationId == request.auth.uid);
+      }
+
+      allow get: if isSignedIn() && existing().organizationId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.organizationId == request.auth.uid;
+      
+      allow create: if isSignedIn() 
+        && incoming().organizationId == request.auth.uid
+        && incoming().state is map
+        && incoming().updatedAt == request.time;
+        
+      allow update: if isSignedIn()
+        && existing().organizationId == request.auth.uid
+        && incoming().organizationId == existing().organizationId
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['state', 'updatedAt'])
+        )
+        && incoming().updatedAt == request.time;
+    }
+  }
+}

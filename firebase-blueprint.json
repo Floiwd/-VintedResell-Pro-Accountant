@@ -1,0 +1,36 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User specific settings and organization linkage",
+      "type": "object",
+      "properties": {
+        "organizationId": { "type": "string" },
+        "email": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["organizationId", "email"]
+    },
+    "Inventory": {
+      "title": "Inventory State",
+      "description": "The complete state of the user's inventory and finances",
+      "type": "object",
+      "properties": {
+        "organizationId": { "type": "string" },
+        "state": { "type": "object" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["organizationId", "state", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": "User",
+      "description": "Individual user profiles"
+    },
+    "/inventories/{inventoryId}": {
+      "schema": "Inventory",
+      "description": "Application state stored per organization"
+    }
+  }
+}

@@ -8,7 +8,7 @@ import {
   ArrowUpDown, Calendar, Clock, ChevronDown, RefreshCw, Clipboard, Sparkles, Package
 } from 'lucide-react';
 import ModelSelector from './ModelSelector';
-import { supabase } from '../lib/supabase';
+import { auth, db } from '../lib/firebase';
 import { parseItemDescription } from '../services/geminiService';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -254,29 +254,21 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
 
     setIsUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `inventory/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('inventory-images')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage.from('inventory-images').getPublicUrl(filePath);
-      setImageUrl(data.publicUrl);
-
-    } catch (err) {
-      console.warn("Upload Storage échoué (Bucket manquant ou permissions). Passage en mode Stockage Local (Base64).");
+      // Direct Base64 fallback instead of trying Supabase Storage
       const reader = new FileReader();
       reader.onload = (event) => {
           if (event.target?.result && typeof event.target.result === 'string') {
               setImageUrl(event.target.result);
+              setIsUploading(false);
           }
       };
+      reader.onerror = () => {
+          setIsUploading(false);
+          alert("Erreur lors de la lecture du fichier");
+      };
       reader.readAsDataURL(file);
-    } finally {
+    } catch (err) {
+      console.error("Upload failed:", err);
       setIsUploading(false);
     }
   };

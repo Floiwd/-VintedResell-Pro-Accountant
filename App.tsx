@@ -2,7 +2,18 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Home, Layers, CreditCard, LogOut, Moon, Sun, TrendingUp, Cloud, Check, AlertCircle, Loader2, Save, Globe } from 'lucide-react';
 import { AppState, FilterState, RecurringExpense } from './types';
 import { INITIAL_INVENTORY, INITIAL_MEMBERS } from './constants';
-import { supabase, isSupabaseConfigured } from './lib/supabase';
+import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  setDoc, 
+  doc, 
+  getDoc,
+  serverTimestamp 
+} from 'firebase/firestore';
 import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
 import Finances from './components/Finances';
@@ -131,9 +142,20 @@ const AppContent: React.FC = () => {
   const getOrgId = async (userId: string) => {
     let orgId = userId;
     try {
-      const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', userId).maybeSingle();
-      if (profile && profile.organization_id) {
-        orgId = profile.organization_id;
+      const profileDoc = await getDoc(doc(db, 'profiles', userId));
+      if (profileDoc.exists()) {
+        const profileData = profileDoc.data();
+        if (profileData.organizationId) {
+          orgId = profileData.organizationId;
+        }
+      } else {
+        // Create initial profile if it doesn't exist
+        const initialProfile = {
+          organizationId: userId,
+          email: auth.currentUser?.email || '',
+          createdAt: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'profiles', userId), initialProfile);
       }
     } catch (e) {
       console.warn("Error fetching profile, defaulting to userId:", e);
@@ -145,47 +167,20 @@ const AppContent: React.FC = () => {
     if ((!isInitialized || isInitialLoad.current || loadError) && !manual) return;
     setSaveStatus('saving');
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = auth.currentUser;
       if (!user) {
           if (manual) alert("Vous devez être connecté pour sauvegarder.");
           setSaveStatus('error');
           return;
       }
-      const orgId = await getOrgId(user.id);
-      const { data: existingRows, error: fetchError } = await supabase
-        .from('inventory')
-        .select('id')
-        .eq('organization_id', orgId)
-        .limit(1);
-
-      if (fetchError) {
-        console.error("Error fetching existing inventory:", fetchError);
-        if (manual) alert("Erreur lors de la vérification de l'inventaire: " + fetchError.message);
-        setSaveStatus('error');
-        return;
-      }
-
-      const existingRow = existingRows && existingRows.length > 0 ? existingRows[0] : null;
-
-      if (existingRow) {
-        const { error: updateError } = await supabase
-          .from('inventory')
-          .update({
-            state: newState,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingRow.id);
-        if (updateError) throw updateError;
-      } else {
-        const { error: insertError } = await supabase
-          .from('inventory')
-          .insert({
-            organization_id: orgId,
-            state: newState,
-            updated_at: new Date().toISOString()
-          });
-        if (insertError) throw insertError;
-      }
+      const orgId = await getOrgId(user.uid);
+      
+      const inventoryRef = doc(db, 'inventories', orgId);
+      await setDoc(inventoryRef, {
+        organizationId: orgId,
+        state: newState,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
 
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
@@ -194,65 +189,54 @@ const AppContent: React.FC = () => {
       console.error("Sync error:", err);
       if (manual) alert("Erreur de sauvegarde: " + (err.message || "Erreur inconnue"));
       setSaveStatus('error');
+      // handleFirestoreError(err, OperationType.WRITE, 'inventories');
     }
   };
 
   const loadFromCloud = useCallback(async () => {
-    if (!isSupabaseConfigured) {
-      setIsInitialized(true);
-      isInitialLoad.current = false;
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     setLoadError(false);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = auth.currentUser;
       if (!user) {
         setIsInitialized(true);
         isInitialLoad.current = false;
         setLoading(false);
         return;
       }
-      const orgId = await getOrgId(user.id);
-      const { data, error } = await supabase
-        .from('inventory')
-        .select('state, updated_at')
-        .eq('organization_id', orgId)
-        .limit(1)
-        .maybeSingle();
+      const orgId = await getOrgId(user.uid);
+      
+      const inventoryDoc = await getDoc(doc(db, 'inventories', orgId));
 
-      if (error) {
-         setLoadError(true);
-         alert("Erreur de chargement des données. La sauvegarde automatique est désactivée par sécurité. Veuillez rafraîchir.");
+      if (inventoryDoc.exists()) {
+        const data = inventoryDoc.data();
+        if (data.state) {
+          const loadedState = {
+            ...data.state,
+            catalog: data.state.catalog || [],
+            recurringExpenses: data.state.recurringExpenses || []
+          };
+          setState(loadedState);
+          setTimeout(() => processRecurringExpenses(loadedState), 100);
+        }
       }
       
-      if (data && data.state) {
-        const loadedState = {
-          ...data.state,
-          catalog: data.state.catalog || [],
-          recurringExpenses: data.state.recurringExpenses || []
-        };
-        setState(loadedState);
-        setTimeout(() => processRecurringExpenses(loadedState), 100);
-      }
-      
-      if (!error) {
-          setIsInitialized(true);
-          isInitialLoad.current = false;
-      }
+      setIsInitialized(true);
+      isInitialLoad.current = false;
 
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Load error:", err);
       setLoadError(true);
+      // handleFirestoreError(err, OperationType.GET, 'inventories');
     } finally {
       setLoading(false);
     }
   }, [processRecurringExpenses]);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) { 
-        setUser(session.user); 
+    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+      if (authUser) { 
+        setUser(authUser); 
         loadFromCloud(); 
       } else { 
         setUser(null); 
@@ -260,7 +244,7 @@ const AppContent: React.FC = () => {
         setLoading(false);
       }
     });
-    return () => subscription.unsubscribe();
+    return () => unsubscribe();
   }, [loadFromCloud]);
 
   useEffect(() => {
@@ -331,7 +315,7 @@ const AppContent: React.FC = () => {
              </button>
           </div>
           
-          <button onClick={() => supabase.auth.signOut()} className="w-full flex items-center gap-4 px-5 py-4 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-[20px] font-black text-[10px] uppercase tracking-widest transition-all">
+          <button onClick={() => signOut(auth)} className="w-full flex items-center gap-4 px-5 py-4 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-[20px] font-black text-[10px] uppercase tracking-widest transition-all">
             <LogOut className="w-4 h-4" /> {t.nav.logout}
           </button>
         </div>
