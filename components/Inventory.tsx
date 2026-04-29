@@ -39,6 +39,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
   const [parserText, setParserText] = useState('');
   const [csvText, setCsvText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
+  const [isCsvLoading, setIsCsvLoading] = useState(false);
 
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -54,6 +55,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
   }, [searchTerm]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputCsvRef = useRef<HTMLInputElement>(null);
   
   const [filters, setFilters] = useState<FilterState>(activeFilters || { 
     brands: [], categories: [], sizes: [], status: [], dateRange: { start: '', end: '' }, sortBy: 'id_desc', searchTerm: '' 
@@ -343,29 +345,47 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
       }
   };
 
-  const handleCsvImport = () => {
-    if (!csvText) return;
-    (parseCSV as any)(csvText, {
+  const handleCsvImport = (content?: string) => {
+    const textToParse = content !== undefined ? content : csvText;
+    if (!textToParse) return;
+    
+    setIsCsvLoading(true);
+    // Helper to find column value by multiple possible names (case-insensitive)
+    const getVal = (row: any, aliases: string[]) => {
+      const keys = Object.keys(row);
+      for (const alias of aliases) {
+        const foundKey = keys.find(k => k.toLowerCase().trim() === alias.toLowerCase().trim());
+        if (foundKey) return row[foundKey];
+      }
+      return '';
+    };
+
+    (parseCSV as any)(textToParse, {
       header: true,
       skipEmptyLines: true,
+      transformHeader: (h: string) => h.trim(), // Remove extra spaces from headers
       complete: (results: ParseResult<any>) => {
         const { data } = results;
         let count = 0;
-        data.forEach((row: any, index: number) => {
-          // Map common column names
-          const name = row.name || row.nom || row.title || row.titre || row.article || "";
-          const brand = row.brand || row.marque || "";
-          const purchasePrice = parseFloat(row.purchasePrice || row.prix_achat || row.achat || row.cost || "0");
-          const salePrice = parseFloat(row.salePrice || row.prix_vente || row.vente || row.price || "0");
-          const category = row.category || row.categorie || row.type || CATEGORIES[0];
-          const size = row.size || row.taille || "";
-          const condition = row.condition || row.etat || ItemCondition.VERY_GOOD;
-          const displayId = row.displayId || row.id || row.reference || row.ref || generateNextId(count);
+        data.forEach((row: any) => {
+          // Map common column names from Vinted, Excel, or VPro
+          const name = getVal(row, ['title', 'titre', 'name', 'nom', 'article', 'description', 'titre article']);
+          const brand = getVal(row, ['brand', 'marque']);
+          const priceStr = getVal(row, ['price', 'prix', 'salePrice', 'prix_vente', 'vente', 'total', 'prix article']);
+          const purchasePriceStr = getVal(row, ['purchasePrice', 'prix_achat', 'achat', 'cost']);
+          const category = getVal(row, ['category', 'categorie', 'type']) || CATEGORIES[0];
+          const size = getVal(row, ['size', 'taille', 'dimension']);
+          const condition = getVal(row, ['condition', 'etat']) || ItemCondition.VERY_GOOD;
+          const date = getVal(row, ['date', 'date_achat', 'created_at', 'vendu_le', 'reception', 'date de vente']);
+          const id = getVal(row, ['id', 'reference', 'ref', 'displayId']);
+
+          const pPrice = parseFloat(purchasePriceStr.toString().replace(',', '.') || "0");
+          const sPrice = parseFloat(priceStr.toString().replace(',', '.') || purchasePriceStr.toString().replace(',', '.') || "0");
 
           if (name) {
             const item: InventoryItem = {
               id: crypto.randomUUID(),
-              displayId: displayId.toString(),
+              displayId: id ? id.toString() : generateNextId(count),
               name: name.toString(),
               brand: brand.toString(),
               category: category.toString(),
@@ -373,12 +393,12 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
               condition: condition as ItemCondition,
               status: ItemStatus.IN_STOCK,
               subStatus: ItemSubStatus.NONE,
-              purchasePrice: isNaN(purchasePrice) ? 0 : purchasePrice,
-              displaySalePrice: isNaN(salePrice) ? 0 : salePrice,
-              salePrice: isNaN(salePrice) ? 0 : salePrice,
+              purchasePrice: isNaN(pPrice) ? 0 : pPrice,
+              displaySalePrice: isNaN(sPrice) ? 0 : sPrice,
+              salePrice: isNaN(sPrice) ? 0 : sPrice,
               boostCost: 0,
-              purchaseDate: new Date().toISOString().split('T')[0],
-              receptionDate: new Date().toISOString().split('T')[0],
+              purchaseDate: date ? new Date(date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+              receptionDate: date ? new Date(date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
               fees: 0,
               shippingCost: 0,
               imageUrl: ''
@@ -390,11 +410,29 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
         alert(`${count} articles importés avec succès.`);
         setIsCsvModalOpen(false);
         setCsvText('');
+        setIsCsvLoading(false);
       },
       error: (error: ParseError) => {
         alert("Erreur lors de l'import CSV: " + error.message);
+        setIsCsvLoading(false);
       }
     });
+  };
+
+  const handleCsvFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        handleCsvImport(content);
+      }
+    };
+    reader.readAsText(file);
+    // Reset the input
+    e.target.value = '';
   };
 
   const filteredItems = useMemo(() => {
@@ -571,28 +609,38 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                         <button onClick={() => setIsCsvModalOpen(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors"><X className="w-5 h-5 text-slate-500" /></button>
                     </div>
                     <div className="p-6 md:p-8 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
-                        <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-2xl border border-orange-100 dark:border-orange-800/50">
-                            <p className="text-xs text-orange-800 dark:text-orange-200 font-bold uppercase tracking-wider mb-2">Instructions :</p>
-                            <p className="text-[10px] text-orange-700 dark:text-orange-300 font-medium leading-relaxed italic">
-                              Collez votre contenu CSV ci-dessous. La première ligne doit contenir les en-têtes.<br/>
-                              Colonnes reconnues : <span className="font-black">name, brand, purchasePrice, salePrice, category, size, condition</span>
-                            </p>
+                        <div className="bg-orange-50 dark:bg-orange-900/20 p-6 rounded-3xl border border-orange-200 dark:border-orange-800 flex flex-col items-center justify-center text-center gap-4 group hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-all cursor-pointer relative overflow-hidden" onClick={() => fileInputCsvRef.current?.click()}>
+                            <div className="w-16 h-16 bg-white dark:bg-orange-900/50 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                                <FileText className="w-8 h-8 text-orange-500" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-black text-orange-950 dark:text-orange-100 uppercase tracking-tighter italic">Sélectionner un fichier CSV</p>
+                                <p className="text-[10px] text-orange-600 dark:text-orange-400 font-bold uppercase mt-1">Ou glisser-déposer ici</p>
+                            </div>
+                            <input type="file" ref={fileInputCsvRef} className="hidden" accept=".csv" onChange={handleCsvFileSelect} />
                         </div>
+
+                        <div className="flex items-center gap-4">
+                            <div className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800"></div>
+                            <span className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">OU COLLEZ LE TEXTE</span>
+                            <div className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800"></div>
+                        </div>
+
                         <textarea 
                             value={csvText}
                             onChange={e => setCsvText(e.target.value)}
-                            placeholder="name,brand,purchasePrice,salePrice&#10;Nike Dunk,Nike,45,120&#10;Veste Vintage,Levi's,15,45"
-                            className="w-full h-64 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 outline-none focus:border-orange-500 font-mono text-xs resize-none"
+                            placeholder="Date,Title,Price,Currency&#10;2026-04-04,Levi's 501,29.90,EUR&#10;2026-04-03,Nike Dunk,85.00,EUR"
+                            className="w-full h-48 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 outline-none focus:border-orange-500 font-mono text-xs resize-none"
                         />
                     </div>
                     <div className="p-6 md:p-8 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex gap-3 md:gap-4 shrink-0">
                         <button onClick={() => setIsCsvModalOpen(false)} className="flex-1 px-4 md:px-6 py-3 md:py-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl md:rounded-2xl font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest text-[10px] md:text-xs hover:bg-slate-50 dark:hover:bg-slate-800">{t.common.cancel}</button>
                         <button 
-                            onClick={handleCsvImport} 
-                            disabled={!csvText}
+                            onClick={() => handleCsvImport()} 
+                            disabled={!csvText || isCsvLoading}
                             className="flex-1 px-4 md:px-6 py-3 md:py-4 bg-orange-600 text-white rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-xl hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            <Download className="w-4 h-4" />
+                            {isCsvLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                             Importer
                         </button>
                     </div>
