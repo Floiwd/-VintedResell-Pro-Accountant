@@ -23,7 +23,15 @@ const Auth: React.FC = () => {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
     } catch (err: any) {
-      setError(err.message);
+      let message = err.message;
+      if (err.code === 'auth/popup-blocked') {
+        message = "La fenêtre de connexion a été bloquée. Veuillez cliquer sur 'Ouvrir dans un nouvel onglet' en haut à droite de l'aperçu.";
+      } else if (err.code === 'auth/unauthorized-domain') {
+        message = "Ce domaine n'est pas autorisé dans Firebase. Veuillez l'ajouter dans la console Firebase (Authentication > Settings > Domains).";
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        message = "Connexion annulée par l'utilisateur.";
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -40,7 +48,19 @@ const Auth: React.FC = () => {
         await createUserWithEmailAndPassword(auth, email, password);
       }
     } catch (err: any) {
-      setError(err.message);
+      let message = err.message;
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        message = "Email ou mot de passe incorrect. Si vous n'avez pas de compte, utilisez l'onglet 'Inscription'.";
+      } else if (err.code === 'auth/email-already-in-use') {
+        message = "Cet email est déjà utilisé. Veuillez vous connecter.";
+      } else if (err.code === 'auth/weak-password') {
+        message = "Le mot de passe doit contenir au moins 6 caractères.";
+      } else if (err.code === 'auth/popup-blocked') {
+        message = "La fenêtre de connexion a été bloquée. Veuillez cliquer sur 'Ouvrir dans un nouvel onglet' en haut à droite de l'aperçu.";
+      } else if (err.code === 'auth/unauthorized-domain') {
+        message = "Ce domaine n'est pas autorisé dans Firebase. Veuillez l'ajouter dans la console Firebase (Authentication > Settings > Domains).";
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }

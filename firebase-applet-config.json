@@ -1,10 +1,10 @@
 {
-  "projectId": "gen-lang-client-0643651549",
-  "appId": "1:232999113426:web:6cf27ff26f7a284b07130b",
-  "apiKey": "AIzaSyAqGHu7Rb3MEBBIAjb6YA2t3b5gaykwmpk",
-  "authDomain": "gen-lang-client-0643651549.firebaseapp.com",
+  "projectId": "vinted-assistant-d0696",
+  "appId": "1:144084237592:web:b1c4853fd38ea7c8cab26d",
+  "apiKey": "AIzaSyBGF3MUvF2Vuz4yoFDmJAVSKxrFcR-Fs94",
+  "authDomain": "vinted-assistant-d0696.firebaseapp.com",
   "firestoreDatabaseId": "ai-studio-97eded93-68b9-4e46-9dc7-9be49e87e20d",
-  "storageBucket": "gen-lang-client-0643651549.firebasestorage.app",
-  "messagingSenderId": "232999113426",
+  "storageBucket": "vinted-assistant-d0696.firebasestorage.app",
+  "messagingSenderId": "144084237592",
   "measurementId": ""
 }
