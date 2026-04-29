@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Home, Layers, CreditCard, LogOut, Moon, Sun, TrendingUp, Cloud, Check, AlertCircle, Loader2, Save, Globe } from 'lucide-react';
 import { AppState, FilterState, RecurringExpense } from './types';
 import { INITIAL_INVENTORY, INITIAL_MEMBERS } from './constants';
-import { supabase } from './lib/supabase';
+import { supabase, isSupabaseConfigured } from './lib/supabase';
 import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
 import Finances from './components/Finances';
@@ -198,6 +198,12 @@ const AppContent: React.FC = () => {
   };
 
   const loadFromCloud = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      setIsInitialized(true);
+      isInitialLoad.current = false;
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setLoadError(false);
     try {
@@ -245,8 +251,14 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) { setUser(session.user); loadFromCloud(); }
-      else { setUser(null); setIsInitialized(false); }
+      if (session?.user) { 
+        setUser(session.user); 
+        loadFromCloud(); 
+      } else { 
+        setUser(null); 
+        setIsInitialized(false);
+        setLoading(false);
+      }
     });
     return () => subscription.unsubscribe();
   }, [loadFromCloud]);
