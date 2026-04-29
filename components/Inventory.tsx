@@ -369,7 +369,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
         let count = 0;
         data.forEach((row: any) => {
           // Map common column names from Vinted, Excel, or VPro
-          const name = getVal(row, ['title', 'titre', 'name', 'nom', 'article', 'description', 'titre article']);
+          const nameVal = getVal(row, ['title', 'titre', 'name', 'nom', 'article', 'description', 'titre article']).toString();
           const brand = getVal(row, ['brand', 'marque']);
           const priceStr = getVal(row, ['price', 'prix', 'salePrice', 'prix_vente', 'vente', 'total', 'prix article']);
           const purchasePriceStr = getVal(row, ['purchasePrice', 'prix_achat', 'achat', 'cost']);
@@ -382,11 +382,20 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
           const pPrice = parseFloat(purchasePriceStr.toString().replace(',', '.') || "0");
           const sPrice = parseFloat(priceStr.toString().replace(',', '.') || purchasePriceStr.toString().replace(',', '.') || "0");
 
-          if (name) {
+          if (nameVal) {
+            // Extraction du # depuis le titre si présent (ex: "Levi's... #046")
+            let extractedId = id ? id.toString() : '';
+            if (!extractedId) {
+                const idMatch = nameVal.match(/#(\d+)/);
+                if (idMatch) {
+                    extractedId = `#${idMatch[1]}`;
+                }
+            }
+
             const item: InventoryItem = {
               id: crypto.randomUUID(),
-              displayId: id ? id.toString() : generateNextId(count),
-              name: name.toString(),
+              displayId: extractedId || generateNextId(count),
+              name: nameVal,
               brand: brand.toString(),
               category: category.toString(),
               size: size.toString(),
