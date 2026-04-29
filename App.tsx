@@ -205,16 +205,11 @@ const AppContent: React.FC = () => {
         shippingCost: item.shippingCost || 0
       }));
 
-      const cleanState: AppState = {
+      // Use JSON strip to remove all undefined values recursively
+      const cleanState = JSON.parse(JSON.stringify({
         ...newState,
         inventory: cleanInventory,
-        nextItemNumber: newState.nextItemNumber || 1,
-        members: newState.members || [],
-        transfers: newState.transfers || [],
-        recurringExpenses: newState.recurringExpenses || [],
-        catalog: newState.catalog || [],
-        sharedWith: newState.sharedWith || []
-      };
+      }));
 
       await setDoc(inventoryRef, {
         organizationId: orgId,
