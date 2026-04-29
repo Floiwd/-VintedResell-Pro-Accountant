@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Home, Layers, CreditCard, LogOut, Moon, Sun, TrendingUp, Cloud, Check, AlertCircle, Loader2, Save, Globe } from 'lucide-react';
-import { AppState, FilterState, RecurringExpense } from './types';
+import { AppState, FilterState, RecurringExpense, ItemCondition, ItemStatus, ItemSubStatus } from './types';
 import { INITIAL_INVENTORY, INITIAL_MEMBERS } from './constants';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -181,9 +181,44 @@ const AppContent: React.FC = () => {
       targetOrgId = orgId;
       
       const inventoryRef = doc(db, 'inventories', orgId);
+
+      // Clean state for Firestore (no undefined values allowed)
+      const cleanInventory = newState.inventory.map(item => ({
+        ...item,
+        brand: item.brand || "",
+        category: item.category || "",
+        size: item.size || "",
+        imageUrl: item.imageUrl || "",
+        purchaseDate: item.purchaseDate || new Date().toISOString().split('T')[0],
+        receptionDate: item.receptionDate || new Date().toISOString().split('T')[0],
+        id: item.id || crypto.randomUUID(),
+        displayId: item.displayId || "",
+        name: item.name || "Sans titre",
+        condition: (item.condition as ItemCondition) || ItemCondition.VERY_GOOD,
+        status: item.status || ItemStatus.IN_STOCK,
+        subStatus: item.subStatus || ItemSubStatus.NONE,
+        purchasePrice: item.purchasePrice || 0,
+        salePrice: item.salePrice || 0,
+        displaySalePrice: item.displaySalePrice || 0,
+        fees: item.fees || 0,
+        boostCost: item.boostCost || 0,
+        shippingCost: item.shippingCost || 0
+      }));
+
+      const cleanState: AppState = {
+        ...newState,
+        inventory: cleanInventory,
+        nextItemNumber: newState.nextItemNumber || 1,
+        members: newState.members || [],
+        transfers: newState.transfers || [],
+        recurringExpenses: newState.recurringExpenses || [],
+        catalog: newState.catalog || [],
+        sharedWith: newState.sharedWith || []
+      };
+
       await setDoc(inventoryRef, {
         organizationId: orgId,
-        state: newState,
+        state: cleanState,
         updatedAt: serverTimestamp()
       }, { merge: true });
 

@@ -370,11 +370,11 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
         data.forEach((row: any) => {
           // Map common column names from Vinted, Excel, or VPro
           const nameVal = getVal(row, ['title', 'titre', 'name', 'nom', 'article', 'description', 'titre article']).toString();
-          const brand = getVal(row, ['brand', 'marque']);
+          let brand = getVal(row, ['brand', 'marque']).toString();
           const priceStr = getVal(row, ['price', 'prix', 'salePrice', 'prix_vente', 'vente', 'total', 'prix article']);
           const purchasePriceStr = getVal(row, ['purchasePrice', 'prix_achat', 'achat', 'cost']);
           const category = getVal(row, ['category', 'categorie', 'type']) || CATEGORIES[0];
-          const size = getVal(row, ['size', 'taille', 'dimension']);
+          let size = getVal(row, ['size', 'taille', 'dimension']).toString();
           const condition = getVal(row, ['condition', 'etat']) || ItemCondition.VERY_GOOD;
           const date = getVal(row, ['date', 'date_achat', 'created_at', 'vendu_le', 'reception', 'date de vente']);
           const id = getVal(row, ['id', 'reference', 'ref', 'displayId']);
@@ -383,12 +383,35 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
           const sPrice = parseFloat(priceStr.toString().replace(',', '.') || purchasePriceStr.toString().replace(',', '.') || "0");
 
           if (nameVal) {
-            // Extraction du # depuis le titre si présent (ex: "Levi's... #046")
+            // Extraction intelligente depuis le titre
             let extractedId = id ? id.toString() : '';
+            
+            // 1. Extraction ID (#046)
             if (!extractedId) {
                 const idMatch = nameVal.match(/#(\d+)/);
-                if (idMatch) {
-                    extractedId = `#${idMatch[1]}`;
+                if (idMatch) extractedId = `#${idMatch[1]}`;
+            }
+
+            // 2. Extraction Taille si vide (W27 L30, W28L32, etc)
+            if (!size) {
+                const sizeMatch = nameVal.match(/[WL]\d{2}[ ]?[WL]?\d{2}|[WL]\d{2}/i);
+                if (sizeMatch) {
+                    size = sizeMatch[0].toUpperCase();
+                } else {
+                    // Cherche des tailles standards (S, M, L, XL, etc) avec des frontières de mots
+                    const stdSizeMatch = nameVal.match(/\b(XXS|XS|S|M|L|XL|XXL|XXXL)\b/i);
+                    if (stdSizeMatch) size = stdSizeMatch[0].toUpperCase();
+                }
+            }
+
+            // 3. Extraction Marque si vide
+            if (!brand) {
+                const commonBrands = ['Levi\'s', 'Levis', 'Nike', 'Carhartt', 'Adidas', 'Zara', 'Dickies', 'Ralph Lauren', 'Lacoste'];
+                for (const b of commonBrands) {
+                    if (nameVal.toLowerCase().includes(b.toLowerCase())) {
+                        brand = b;
+                        break;
+                    }
                 }
             }
 
@@ -396,9 +419,9 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
               id: crypto.randomUUID(),
               displayId: extractedId || generateNextId(count),
               name: nameVal,
-              brand: brand.toString(),
+              brand: brand,
               category: category.toString(),
-              size: size.toString(),
+              size: size,
               condition: condition as ItemCondition,
               status: ItemStatus.IN_STOCK,
               subStatus: ItemSubStatus.NONE,
