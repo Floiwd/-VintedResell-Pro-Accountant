@@ -50,71 +50,62 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Ultimate" v9.0 - ResellPro
+// Scraper Vinted "Force-Structure" v10.0 - ResellPro
 (async () => {
-  console.log("🚀 Lancement du Scraper Ultimate...");
+  console.log("🚀 Lancement du Scraper Force-Structure v10.0...");
   
   const statusEl = document.createElement('div');
-  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 10000; background: #6366f1; color: white; padding: 22px; border-radius: 20px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255,255,255,0.4); min-width: 250px; text-align: center; transition: all 0.4s ease;";
-  statusEl.innerHTML = "⏳ Analyse de la page en cours...";
+  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 10000; background: #6366f1; color: white; padding: 25px; border-radius: 20px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255,255,255,0.4); min-width: 280px; text-align: center; transition: all 0.4s ease;";
+  statusEl.innerHTML = "⏳ Scanning structure Vinted...";
   document.body.appendChild(statusEl);
 
-  const smartScroll = async () => {
-    for(let i=0; i<10; i++) {
-      window.scrollBy(0, 800);
-      await new Promise(r => setTimeout(r, 200));
+  const autoScroll = async () => {
+    let lastHeight = 0;
+    for(let i=0; i<12; i++) {
+      window.scrollBy(0, 600);
+      await new Promise(r => setTimeout(r, 250));
+      if (document.body.scrollHeight === lastHeight) break;
+      lastHeight = document.body.scrollHeight;
+      statusEl.innerText = "⏳ Scroll progressif... (" + (i+1) + "/12)";
     }
     window.scrollTo(0, 0);
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 1000));
   };
 
-  await smartScroll();
+  await autoScroll();
   
   const isSalesPage = window.location.href.includes('type=sold');
-  console.log("📊 Mode détecté : " + (isSalesPage ? "VENTES" : "ACHATS"));
-
   const items = [];
-  // Regex ultra-flexible pour prix Vinted (ex: 28,00 €, 28.5€, 28 €)
   const priceRegex = /(\\d+[,.]?\\d*)\\s*€/;
 
-  // 1. On cherche tous les éléments "feuilles" (sans enfants) qui contiennent un prix
-  const leafNodes = Array.from(document.querySelectorAll('span, div, p, b, strong, a'))
-    .filter(el => {
-      const text = el.innerText.trim();
-      return el.children.length === 0 && priceRegex.test(text) && text.length < 15;
-    });
+  const allImages = Array.from(document.querySelectorAll('img')).filter(img => {
+    const src = img.src || "";
+    return src.includes('vinted') || src.includes('images') || src.includes('item');
+  });
 
-  leafNodes.forEach(priceEl => {
+  statusEl.innerText = "🕵️ Analyse de " + allImages.length + " blocs potentiels...";
+
+  allImages.forEach(img => {
     try {
-      const match = priceEl.innerText.match(priceRegex);
-      if (!match) return;
-      
-      const priceVal = parseFloat(match[1].replace(',', '.'));
-      if (isNaN(priceVal)) return;
-
-      // 2. On remonte pour trouver le bloc parent qui contient l'image
-      let container = priceEl.parentElement;
-      let iterations = 0;
-      
-      while (container && iterations < 10) {
-        const img = container.querySelector('img');
-        const textContent = container.innerText;
+      let container = img.parentElement;
+      for (let i = 0; i < 8; i++) {
+        if (!container) break;
         
-        // Un bloc valide a une image et assez de texte
-        if (img && textContent.length > 40) {
-          // 3. Extraction du titre dans ce bloc
-          const textElements = Array.from(container.querySelectorAll('span, p, div, h1, h2, h3, h4, a'))
+        const content = container.innerText || "";
+        const priceMatch = content.match(priceRegex);
+
+        if (priceMatch && content.length > 30) {
+          const priceVal = parseFloat(priceMatch[1].replace(',', '.'));
+          
+          const textNodes = Array.from(container.querySelectorAll('span, p, div, h1, h2, h3, h4, a'))
             .map(t => t.innerText.trim())
-            .filter(t => t.length > 10 && !t.includes('€') && !t.includes('\\n'));
+            .filter(t => t.length > 8 && !t.includes('€') && !t.includes('\\n'));
 
-          const forbidden = ['commande', 'finalisée', 'évaluée', 'validé', 'remboursement', 'effectué', 'acheteur', 'vendeur', 'vendu', 'annulée', 'suivre', 'virements', 'transaction', 'mes commandes', 'ventes', 'achats'];
-          const titleCandidates = textElements.filter(t => 
-            !forbidden.some(key => t.toLowerCase().includes(key)) && t.length < 120
-          );
+          const forbidden = ['commande', 'finalisée', 'évaluée', 'validé', 'remboursement', 'effectué', 'acheteur', 'vendeur', 'vendu', 'annulée', 'suivre', 'virements', 'transaction', 'mes commandes', 'ventes', 'achats', 'aide', 'toutes'];
+          const cleanTitles = textNodes.filter(t => !forbidden.some(key => t.toLowerCase().includes(key)) && t.length < 100);
 
-          if (titleCandidates.length > 0) {
-            const title = titleCandidates.sort((a,b) => b.length - a.length)[0].replace(/["'\\x60]/g, '');
-            
+          if (cleanTitles.length > 0) {
+            const title = cleanTitles.sort((a,b) => b.length - a.length)[0].replace(/["'\\x60]/g, '');
             items.push({
               title: title,
               brand: title.split(' ')[0],
@@ -125,33 +116,34 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
               category: 'Vinted Import',
               status: isSalesPage ? 'SOLD' : 'IN_STOCK'
             });
-            break;
+            break; 
           }
         }
         container = container.parentElement;
-        iterations++;
       }
-    } catch (e) {
-      console.error("Erreur sur un élément :", e);
-    }
+    } catch (e) {}
   });
 
-  const finalItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title))===i);
+  const finalItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title && t.salePrice === v.salePrice))===i);
   
-  statusEl.style.background = finalItems.length > 0 ? "#10b981" : "#f43f5e";
-  statusEl.innerText = "✅ " + finalItems.length + " articles extraits !";
-  
-  console.log("📦 DONNÉES À COPIER :");
+  if (finalItems.length > 0) {
+    statusEl.style.background = "#10b981";
+    statusEl.innerHTML = "✅ SUCCESS : " + finalItems.length + " articles !";
+  } else {
+    statusEl.style.background = "#f43f5e";
+    statusEl.innerHTML = "❌ AUCUN ARTICLE TROUVÉ";
+  }
+
+  console.log("%cResellPro Scraper v10.0 Output:", "color: #6366f1; font-weight: bold; font-size: 16px;");
   console.log(JSON.stringify({ platform: 'VINTED', items: finalItems }, null, 2));
 
   setTimeout(() => {
-    if (statusEl.parentElement) document.body.removeChild(statusEl);
-    alert("SYNCHRONISATION VINTED TERMINÉ !\\n\\n" + 
-          finalItems.length + " articles récupérés.\\n\\n" +
+    alert("SYNCHRONISATION VINTED TERMINÉE !\\n\\n" + 
+          finalItems.length + " articles identifiés.\\n\\n" +
           "1. Ouvrez la Console (F12)\\n" +
           "2. Copiez l'objet JSON complet\\n" +
           "3. Collez-le dans ResellPro.");
-  }, 3000);
+  }, 2000);
 })();
     `;
     navigator.clipboard.writeText(script);
