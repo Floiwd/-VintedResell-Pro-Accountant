@@ -50,27 +50,27 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Iron-Guard" v13.0 - ResellPro
+// Scraper Vinted "Iron-Guard-Pro" v13.5 - ResellPro
 (async () => {
-  console.log("🚀 Lancement du Scraper Iron-Guard v13.0...");
+  console.log("🚀 Lancement du Scraper Iron-Guard-Pro v13.5...");
   
   const statusEl = document.createElement('div');
   const style = "position: fixed; top: 20px; right: 20px; z-index: 10000; background: #6366f1; color: white; padding: 25px; border-radius: 24px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255,255,255,0.4); min-width: 320px; text-align: center; transition: all 0.4s ease;";
   statusEl.style = style;
-  statusEl.innerHTML = "<div style='margin-bottom: 15px'>⏳ Initialisation Iron-Guard...</div>";
+  statusEl.innerHTML = "<div style='margin-bottom: 15px'>⏳ Initialisation Iron-Guard-Pro...</div>";
   document.body.appendChild(statusEl);
 
   const autoScroll = async () => {
     let lastHeight = 0;
-    for(let i=0; i<20; i++) {
-      window.scrollBy(0, 1000);
-      await new Promise(r => setTimeout(r, 400));
-      if (document.body.scrollHeight === lastHeight && i > 5) break;
+    for(let i=0; i<30; i++) {
+      window.scrollBy(0, 1200);
+      await new Promise(r => setTimeout(r, 450));
+      if (document.body.scrollHeight === lastHeight && i > 10) break;
       lastHeight = document.body.scrollHeight;
-      statusEl.innerHTML = "⏳ Scanning profondeur... (" + (i+1) + "/20)";
+      statusEl.innerHTML = "⏳ Scanning profondeur extrême... (" + (i+1) + "/30)";
     }
     window.scrollTo(0, 0);
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 1500));
   };
 
   await autoScroll();
@@ -107,13 +107,14 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
             .map(t => t.innerText.trim())
             .filter(t => t.length > 5 && !t.includes('€') && !t.includes('\\n'));
 
-          // LISTE NOIRE RENFORCÉE
+          // LISTE NOIRE RENFORCÉE (V13.5)
           const forbidden = [
             'commande', 'finalisée', 'évaluée', 'validé', 'remboursement', 'effectué', 
             'acheteur', 'vendeur', 'vendu', 'annulée', 'suivre', 'virements', 
             'transaction', 'mes commandes', 'ventes', 'achats', 'aide', 'toutes',
             'clemz', 'partenaire', 'utilisateur', 'modifications', 'note :', 'ignorer', 
-            'inférieure', 'appareil', 'fonctionnalité', 'dressing', 'connecté'
+            'inférieure', 'appareil', 'fonctionnalité', 'dressing', 'connecté', 'vinted help',
+            'cookies', 'partenaires', 'données', 'personnelles', 'publicité', 'choix', '321'
           ];
           
           const cleanTitles = textNodes.filter(t => !forbidden.some(key => t.toLowerCase().includes(key)) && t.length < 120);
@@ -121,8 +122,10 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
           if (cleanTitles.length > 0) {
             const title = cleanTitles.sort((a,b) => b.length - a.length)[0].replace(/["'\\x60]/g, '');
             
-            // On vérifie que le titre ne ressemble pas à une phrase de service
-            if (title.split(' ').length < 2) return; 
+            // FILTRE DE QUALITÉ : Minimum 4 mots et pas de texte "technique"
+            const wordCount = title.split(' ').length;
+            if (wordCount < 3) return;
+            if (title.includes('http') || title.includes('.js') || title.includes('www.')) return;
 
             items.push({
               title: title,
@@ -204,9 +207,8 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
     setTimeout(() => statusEl.remove(), 5000);
   }
 
-  console.log("%cResellPro Scraper v13.0 Output (Nettoyé):", "color: #6366f1; font-weight: bold; font-size: 16px;");
+  console.log("%cResellPro Scraper v13.1 Output (Nettoyé):", "color: #6366f1; font-weight: bold; font-size: 16px;");
   console.log(jsonOutput);
-})();onsole.log(jsonOutput);
 })();
     `;
     navigator.clipboard.writeText(script);
