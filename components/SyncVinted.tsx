@@ -21,6 +21,7 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
   const { t } = useLanguage();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   
   const [newAccount, setNewAccount] = useState({
@@ -404,7 +405,10 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
                 {copied ? <Check className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5" />}
                 {copied ? 'Copié !' : 'Copier le script'}
               </button>
-              <button className="px-8 py-5 bg-indigo-800 text-white border border-indigo-700 rounded-[24px] font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-all flex items-center gap-3">
+              <button 
+                onClick={() => setIsGuideModalOpen(true)}
+                className="px-8 py-5 bg-indigo-800 text-white border border-indigo-700 rounded-[24px] font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-all flex items-center gap-3"
+              >
                 <FileText className="w-5 h-5 text-indigo-300" />
                 Guide d'utilisation
               </button>
@@ -537,6 +541,110 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
                 {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 Lancer l'importation
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Guide Modal */}
+      {isGuideModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-3xl rounded-[40px] p-0 border border-slate-200 dark:border-slate-800 shadow-2xl animate-in zoom-in-95 duration-300 overflow-hidden">
+            {/* Header */}
+            <div className="bg-indigo-600 p-8 text-white relative">
+              <div className="absolute top-0 right-0 p-8">
+                 <button onClick={() => setIsGuideModalOpen(false)} className="bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-all">
+                   <Trash2 className="w-5 h-5" />
+                 </button>
+              </div>
+              <h3 className="text-3xl font-black uppercase tracking-tighter italic mb-2">Guide de Synchronisation</h3>
+              <p className="text-indigo-100 font-bold uppercase text-[10px] tracking-[0.2em]">Maîtrisez l'extraction automatique Vinted</p>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="p-8 max-h-[70vh] overflow-y-auto custom-scrollbar space-y-10">
+              {/* Step 1 */}
+              <div className="flex gap-6">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0 text-xl font-black text-indigo-600 italic">01</div>
+                <div>
+                  <h4 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">Copiez le Script Magique</h4>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-4">
+                    Utilisez le bouton "Copier le script" sur le tableau de bord. Ce script est conçu pour contourner les protections et extraire proprement vos articles.
+                  </p>
+                  <button onClick={handleCopyScript} className="flex items-center gap-2 text-indigo-600 font-black uppercase text-[10px] tracking-widest px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl hover:bg-indigo-100 transition-all">
+                    <Copy className="w-4 h-4" /> {copied ? 'Copié avec succès' : 'Copier maintenant'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className="flex gap-6">
+                <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 text-xl font-black text-slate-400 italic">02</div>
+                <div>
+                  <h4 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">Allez sur Vinted (Navigateur PC)</h4>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-4">
+                    Connectez-vous à votre compte Vinted sur Chrome, Safari ou Edge. Rendez-vous sur votre profil ou vos ventes.
+                  </p>
+                  <a href="https://www.vinted.fr" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-slate-900 dark:text-white font-black uppercase text-[10px] tracking-widest px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 transition-all">
+                    <ExternalLink className="w-4 h-4" /> Ouvrir Vinted
+                  </a>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex gap-6">
+                <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 text-xl font-black text-slate-400 italic">03</div>
+                <div>
+                  <h4 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">Ouvrez la console développeur</h4>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+                    Appuyez sur <kbd className="px-2 py-1 bg-slate-100 rounded-md font-bold">F12</kbd> (ou clic droit &gt; Inspecter) et cliquez sur l'onglet <strong className="text-indigo-600 uppercase italic text-xs">Console</strong>.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div className="flex gap-6">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0 text-xl font-black text-indigo-600 italic">04</div>
+                <div>
+                  <h4 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">Collez et Exécutez</h4>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+                    Collez le script (<kbd className="px-1 py-1 bg-slate-100 rounded-md">Ctrl+V</kbd>) et appuyez sur <kbd className="px-1 py-1 bg-slate-100 rounded-md">Entrée</kbd>.
+                    Le script va scroller automatiquement pour charger tous les articles. Patientez quelques secondes.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 5 */}
+              <div className="flex gap-6">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center flex-shrink-0 text-xl font-black text-white italic">05</div>
+                <div>
+                  <h4 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">Copiez le résultat JSON</h4>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+                    Une petite fenêtre verte apparaîtra en haut à droite sur Vinted. Cliquez sur <strong className="text-indigo-600">"COPIER LE JSON NETTOYÉ"</strong>.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 6 */}
+              <div className="flex gap-6">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center flex-shrink-0 text-xl font-black text-white italic">06</div>
+                <div>
+                  <h4 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">Sync dans ResellPro</h4>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+                    Revenez ici, cliquez sur "Synchroniser maintenant" sur votre compte, collez le contenu et validez. Votre inventaire est à jour !
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-8 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-4 border-t border-slate-100 dark:border-slate-800">
+               <button 
+                onClick={() => setIsGuideModalOpen(false)}
+                className="px-10 py-4 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:scale-105 transition-all"
+               >
+                 J'ai compris !
+               </button>
             </div>
           </div>
         </div>
