@@ -50,24 +50,24 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Ultimate-Copy" v12.0 - ResellPro
+// Scraper Vinted "Iron-Guard" v13.0 - ResellPro
 (async () => {
-  console.log("🚀 Lancement du Scraper Ultimate-Copy v12.0...");
+  console.log("🚀 Lancement du Scraper Iron-Guard v13.0...");
   
   const statusEl = document.createElement('div');
   const style = "position: fixed; top: 20px; right: 20px; z-index: 10000; background: #6366f1; color: white; padding: 25px; border-radius: 24px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255,255,255,0.4); min-width: 320px; text-align: center; transition: all 0.4s ease;";
   statusEl.style = style;
-  statusEl.innerHTML = "<div style='margin-bottom: 15px'>⏳ Scanning structure Vinted...</div>";
+  statusEl.innerHTML = "<div style='margin-bottom: 15px'>⏳ Initialisation Iron-Guard...</div>";
   document.body.appendChild(statusEl);
 
   const autoScroll = async () => {
     let lastHeight = 0;
-    for(let i=0; i<15; i++) {
-      window.scrollBy(0, 800);
-      await new Promise(r => setTimeout(r, 300));
-      if (document.body.scrollHeight === lastHeight) break;
+    for(let i=0; i<20; i++) {
+      window.scrollBy(0, 1000);
+      await new Promise(r => setTimeout(r, 400));
+      if (document.body.scrollHeight === lastHeight && i > 5) break;
       lastHeight = document.body.scrollHeight;
-      statusEl.innerHTML = "⏳ Scroll progressif... (" + (i+1) + "/15)";
+      statusEl.innerHTML = "⏳ Scanning profondeur... (" + (i+1) + "/20)";
     }
     window.scrollTo(0, 0);
     await new Promise(r => setTimeout(r, 1000));
@@ -81,10 +81,12 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const allImages = Array.from(document.querySelectorAll('img')).filter(img => {
     const src = img.src || "";
+    // FILTRE ABSOLU : Exclure extensions et pixels
+    if (src.includes('chrome-extension') || src.includes('pixel.gif') || src.includes('google-analytics')) return false;
     return src.includes('vinted') || src.includes('images') || src.includes('item');
   });
 
-  statusEl.innerHTML = "🕵️ Analyse de " + allImages.length + " blocs...";
+  statusEl.innerHTML = "🕵️ Analyse de " + allImages.length + " blocs réels...";
 
   allImages.forEach(img => {
     try {
@@ -95,21 +97,33 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
         const content = container.innerText || "";
         const priceMatch = content.match(priceRegex);
 
-        if (priceMatch && content.length > 30) {
+        if (priceMatch && content.length > 25) {
           const priceRaw = priceMatch[1].replace(',', '.');
           const priceVal = parseFloat(priceRaw);
           
-          if (isNaN(priceVal)) return;
+          if (isNaN(priceVal) || priceVal < 0.1) return;
 
           const textNodes = Array.from(container.querySelectorAll('span, p, div, h1, h2, h3, h4, a'))
             .map(t => t.innerText.trim())
-            .filter(t => t.length > 8 && !t.includes('€') && !t.includes('\\n'));
+            .filter(t => t.length > 5 && !t.includes('€') && !t.includes('\\n'));
 
-          const forbidden = ['commande', 'finalisée', 'évaluée', 'validé', 'remboursement', 'effectué', 'acheteur', 'vendeur', 'vendu', 'annulée', 'suivre', 'virements', 'transaction', 'mes commandes', 'ventes', 'achats', 'aide', 'toutes'];
-          const cleanTitles = textNodes.filter(t => !forbidden.some(key => t.toLowerCase().includes(key)) && t.length < 100);
+          // LISTE NOIRE RENFORCÉE
+          const forbidden = [
+            'commande', 'finalisée', 'évaluée', 'validé', 'remboursement', 'effectué', 
+            'acheteur', 'vendeur', 'vendu', 'annulée', 'suivre', 'virements', 
+            'transaction', 'mes commandes', 'ventes', 'achats', 'aide', 'toutes',
+            'clemz', 'partenaire', 'utilisateur', 'modifications', 'note :', 'ignorer', 
+            'inférieure', 'appareil', 'fonctionnalité', 'dressing', 'connecté'
+          ];
+          
+          const cleanTitles = textNodes.filter(t => !forbidden.some(key => t.toLowerCase().includes(key)) && t.length < 120);
 
           if (cleanTitles.length > 0) {
             const title = cleanTitles.sort((a,b) => b.length - a.length)[0].replace(/["'\\x60]/g, '');
+            
+            // On vérifie que le titre ne ressemble pas à une phrase de service
+            if (title.split(' ').length < 2) return; 
+
             items.push({
               title: title,
               brand: title.split(' ')[0],
@@ -128,20 +142,20 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
     } catch (e) {}
   });
 
-  const finalItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title && t.salePrice === v.salePrice))===i);
+  const finalItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title && Math.abs(t.salePrice - v.salePrice) < 0.01))===i);
   const jsonOutput = JSON.stringify({ platform: 'VINTED', items: finalItems }, null, 2);
 
   if (finalItems.length > 0) {
     statusEl.style.background = "#10b981";
     statusEl.innerHTML = \`
       <div style="margin-bottom: 20px">
-        <div style="font-size: 24px; margin-bottom: 5px">✅ SUCCESS</div>
-        <div style="font-size: 14px; opacity: 0.8">\${finalItems.length} articles trouvés</div>
+        <div style="font-size: 24px; margin-bottom: 5px">✅ EXTRACTION OK</div>
+        <div style="font-size: 14px; opacity: 0.8">\${finalItems.length} vrais articles isolés</div>
       </div>
       <button id="copy-vpro-btn" style="background: white; color: #10b981; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 900; cursor: pointer; font-size: 14px; width: 100%; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1)">
-        COPIER LE JSON
+        COPIER LE JSON NETTOYÉ
       </button>
-      <div style="margin-top: 15px; font-size: 10px; opacity: 0.7">Cliquez sur le bouton puis collez dans ResellPro</div>
+      <div style="margin-top: 15px; font-size: 10px; opacity: 0.7">Prêt à être collé dans ResellPro</div>
     \`;
     
     document.getElementById('copy-vpro-btn').onclick = () => {
@@ -152,7 +166,6 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
         if (navigator.clipboard && navigator.clipboard.writeText) {
           return navigator.clipboard.writeText(text);
         }
-        // Robust Fallback
         const textArea = document.createElement("textarea");
         textArea.value = text;
         textArea.style.position = "fixed";
@@ -176,24 +189,24 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
         btn.style.background = "#059669";
         btn.style.color = "white";
         setTimeout(() => {
-          btn.innerText = "COPIER LE JSON";
+          btn.innerText = "COPIER LE JSON NETTOYÉ";
           btn.style.background = "white";
           btn.style.color = "#10b981";
         }, 2000);
       }).catch(err => {
         console.error("Erreur de copie :", err);
-        btn.innerText = "ERREUR (VOIR CONSOLE)";
-        btn.style.background = "#ef4444";
+        btn.innerText = "ERREUR DE COPIE";
       });
     };
   } else {
     statusEl.style.background = "#f43f5e";
-    statusEl.innerHTML = "❌ AUCUN ARTICLE TROUVÉ";
+    statusEl.innerHTML = "❌ AUCUN ARTICLE RÉEL TROUVÉ";
     setTimeout(() => statusEl.remove(), 5000);
   }
 
-  console.log("%cResellPro Scraper v12.0 Output:", "color: #6366f1; font-weight: bold; font-size: 16px;");
+  console.log("%cResellPro Scraper v13.0 Output (Nettoyé):", "color: #6366f1; font-weight: bold; font-size: 16px;");
   console.log(jsonOutput);
+})();onsole.log(jsonOutput);
 })();
     `;
     navigator.clipboard.writeText(script);
