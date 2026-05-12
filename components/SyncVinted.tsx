@@ -146,7 +146,32 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
     
     document.getElementById('copy-vpro-btn').onclick = () => {
       const btn = document.getElementById('copy-vpro-btn');
-      navigator.clipboard.writeText(jsonOutput).then(() => {
+      const textToCopy = jsonOutput;
+      
+      const performCopy = (text) => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text);
+        }
+        // Robust Fallback
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          const successful = document.execCommand('copy');
+          document.body.removeChild(textArea);
+          return successful ? Promise.resolve() : Promise.reject();
+        } catch (err) {
+          document.body.removeChild(textArea);
+          return Promise.reject(err);
+        }
+      };
+
+      performCopy(textToCopy).then(() => {
         btn.innerText = "COPIÉ !";
         btn.style.background = "#059669";
         btn.style.color = "white";
@@ -155,6 +180,10 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
           btn.style.background = "white";
           btn.style.color = "#10b981";
         }, 2000);
+      }).catch(err => {
+        console.error("Erreur de copie :", err);
+        btn.innerText = "ERREUR (VOIR CONSOLE)";
+        btn.style.background = "#ef4444";
       });
     };
   } else {
