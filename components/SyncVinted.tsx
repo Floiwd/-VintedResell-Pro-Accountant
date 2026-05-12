@@ -50,23 +50,24 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Final-Fix" v11.0 - ResellPro
+// Scraper Vinted "Ultimate-Copy" v12.0 - ResellPro
 (async () => {
-  console.log("🚀 Lancement du Scraper Final-Fix v11.0...");
+  console.log("🚀 Lancement du Scraper Ultimate-Copy v12.0...");
   
   const statusEl = document.createElement('div');
-  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 10000; background: #6366f1; color: white; padding: 25px; border-radius: 20px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255,255,255,0.4); min-width: 280px; text-align: center; transition: all 0.4s ease;";
-  statusEl.innerHTML = "⏳ Scanning structure Vinted...";
+  const style = "position: fixed; top: 20px; right: 20px; z-index: 10000; background: #6366f1; color: white; padding: 25px; border-radius: 24px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255,255,255,0.4); min-width: 320px; text-align: center; transition: all 0.4s ease;";
+  statusEl.style = style;
+  statusEl.innerHTML = "<div style='margin-bottom: 15px'>⏳ Scanning structure Vinted...</div>";
   document.body.appendChild(statusEl);
 
   const autoScroll = async () => {
     let lastHeight = 0;
-    for(let i=0; i<12; i++) {
-      window.scrollBy(0, 600);
-      await new Promise(r => setTimeout(r, 250));
+    for(let i=0; i<15; i++) {
+      window.scrollBy(0, 800);
+      await new Promise(r => setTimeout(r, 300));
       if (document.body.scrollHeight === lastHeight) break;
       lastHeight = document.body.scrollHeight;
-      statusEl.innerText = "⏳ Scroll progressif... (" + (i+1) + "/12)";
+      statusEl.innerHTML = "⏳ Scroll progressif... (" + (i+1) + "/15)";
     }
     window.scrollTo(0, 0);
     await new Promise(r => setTimeout(r, 1000));
@@ -83,7 +84,7 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
     return src.includes('vinted') || src.includes('images') || src.includes('item');
   });
 
-  statusEl.innerText = "🕵️ Analyse de " + allImages.length + " blocs potentiels...";
+  statusEl.innerHTML = "🕵️ Analyse de " + allImages.length + " blocs...";
 
   allImages.forEach(img => {
     try {
@@ -95,7 +96,6 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
         const priceMatch = content.match(priceRegex);
 
         if (priceMatch && content.length > 30) {
-          // FORCE NUMBER FORMAT (Dot instead of comma)
           const priceRaw = priceMatch[1].replace(',', '.');
           const priceVal = parseFloat(priceRaw);
           
@@ -109,7 +109,7 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
           const cleanTitles = textNodes.filter(t => !forbidden.some(key => t.toLowerCase().includes(key)) && t.length < 100);
 
           if (cleanTitles.length > 0) {
-            const title = cleanTitles.sort((a,b) => b.length - a.length)[0].replace(/["'\x60]/g, '');
+            const title = cleanTitles.sort((a,b) => b.length - a.length)[0].replace(/["'\\x60]/g, '');
             items.push({
               title: title,
               brand: title.split(' ')[0],
@@ -129,25 +129,42 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
   });
 
   const finalItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title && t.salePrice === v.salePrice))===i);
-  
+  const jsonOutput = JSON.stringify({ platform: 'VINTED', items: finalItems }, null, 2);
+
   if (finalItems.length > 0) {
     statusEl.style.background = "#10b981";
-    statusEl.innerHTML = "✅ SUCCESS : " + finalItems.length + " articles !";
+    statusEl.innerHTML = \`
+      <div style="margin-bottom: 20px">
+        <div style="font-size: 24px; margin-bottom: 5px">✅ SUCCESS</div>
+        <div style="font-size: 14px; opacity: 0.8">\${finalItems.length} articles trouvés</div>
+      </div>
+      <button id="copy-vpro-btn" style="background: white; color: #10b981; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 900; cursor: pointer; font-size: 14px; width: 100%; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1)">
+        COPIER LE JSON
+      </button>
+      <div style="margin-top: 15px; font-size: 10px; opacity: 0.7">Cliquez sur le bouton puis collez dans ResellPro</div>
+    \`;
+    
+    document.getElementById('copy-vpro-btn').onclick = () => {
+      const btn = document.getElementById('copy-vpro-btn');
+      navigator.clipboard.writeText(jsonOutput).then(() => {
+        btn.innerText = "COPIÉ !";
+        btn.style.background = "#059669";
+        btn.style.color = "white";
+        setTimeout(() => {
+          btn.innerText = "COPIER LE JSON";
+          btn.style.background = "white";
+          btn.style.color = "#10b981";
+        }, 2000);
+      });
+    };
   } else {
     statusEl.style.background = "#f43f5e";
     statusEl.innerHTML = "❌ AUCUN ARTICLE TROUVÉ";
+    setTimeout(() => statusEl.remove(), 5000);
   }
 
-  console.log("%cResellPro Scraper v11.0 Output:", "color: #6366f1; font-weight: bold; font-size: 16px;");
-  console.log(JSON.stringify({ platform: 'VINTED', items: finalItems }, null, 2));
-
-  setTimeout(() => {
-    alert("SYNCHRONISATION VINTED TERMINÉE !\\n\\n" + 
-          finalItems.length + " articles identifiés.\\n\\n" +
-          "1. Ouvrez la Console (F12)\\n" +
-          "2. Copiez l'objet JSON complet\\n" +
-          "3. Collez-le dans ResellPro.");
-  }, 2000);
+  console.log("%cResellPro Scraper v12.0 Output:", "color: #6366f1; font-weight: bold; font-size: 16px;");
+  console.log(jsonOutput);
 })();
     `;
     navigator.clipboard.writeText(script);
@@ -158,7 +175,24 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
   const processSyncData = () => {
     try {
       setIsProcessing(true);
-      const data = JSON.parse(syncData);
+      
+      let data;
+      const cleanInput = syncData.trim();
+      
+      try {
+        data = JSON.parse(cleanInput);
+      } catch (e) {
+        // Robust fallback: Extract JSON between first '{' and last '}'
+        const firstBrace = cleanInput.indexOf('{');
+        const lastBrace = cleanInput.lastIndexOf('}');
+        
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          const extracted = cleanInput.substring(firstBrace, lastBrace + 1);
+          data = JSON.parse(extracted);
+        } else {
+          throw e;
+        }
+      }
       
       if (!data.items || !Array.isArray(data.items)) {
         throw new Error("Format invalide");
@@ -403,12 +437,22 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
               </div>
             </div>
             
-            <textarea 
-              value={syncData}
-              onChange={e => setSyncData(e.target.value)}
-              placeholder="Collez ici le résultat JSON du script..."
-              className="w-full h-48 px-6 py-4 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border-2 border-slate-100 dark:border-slate-700 focus:border-indigo-500 outline-none font-mono text-xs text-slate-900 dark:text-white mb-8 resize-none"
-            />
+            <div className="relative">
+              <textarea 
+                value={syncData}
+                onChange={e => setSyncData(e.target.value)}
+                placeholder="Collez ici le résultat JSON du script..."
+                className="w-full h-48 px-6 py-4 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border-2 border-slate-100 dark:border-slate-700 focus:border-indigo-500 outline-none font-mono text-xs text-slate-900 dark:text-white mb-8 resize-none"
+              />
+              {syncData && (
+                <button 
+                  onClick={() => setSyncData('')}
+                  className="absolute top-4 right-4 p-2 bg-white dark:bg-slate-700 text-rose-500 rounded-xl shadow-sm border border-slate-100 dark:border-slate-600 hover:bg-rose-50 transition-all font-black text-[9px] uppercase tracking-widest"
+                >
+                  Effacer
+                </button>
+              )}
+            </div>
 
             <div className="flex gap-4">
               <button 
