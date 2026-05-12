@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Home, Layers, CreditCard, LogOut, Moon, Sun, TrendingUp, Cloud, Check, AlertCircle, Loader2, Save, Globe, RefreshCw } from 'lucide-react';
+import { Home, Layers, CreditCard, LogOut, Moon, Sun, TrendingUp, Cloud, Check, AlertCircle, Loader2, Save, Globe, RefreshCw, Link2 } from 'lucide-react';
 import { AppState, FilterState, RecurringExpense, ItemCondition, ItemStatus, ItemSubStatus } from './types';
 import { INITIAL_INVENTORY, INITIAL_MEMBERS } from './constants';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
@@ -19,6 +19,7 @@ import Inventory from './components/Inventory';
 import Finances from './components/Finances';
 import PricingGuide from './components/PricingGuide';
 import SyncVinted from './components/SyncVinted';
+import Matching from './components/Matching';
 import Auth from './components/Auth';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 
@@ -49,7 +50,7 @@ const AppContent: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'finances' | 'pricing' | 'sync'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'finances' | 'pricing' | 'sync' | 'matching'>('dashboard');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [loadError, setLoadError] = useState(false);
   const [cachedOrgId, setCachedOrgId] = useState<string | null>(null);
@@ -316,6 +317,7 @@ const AppContent: React.FC = () => {
         <nav className="flex-1 px-6 space-y-2 py-4">
           <NavItem active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<Home className="w-5 h-5" />} label={t.nav.dashboard} />
           <NavItem active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} icon={<Layers className="w-5 h-5" />} label={t.nav.inventory} />
+          <NavItem active={activeTab === 'matching'} onClick={() => setActiveTab('matching')} icon={<Link2 className="w-5 h-5" />} label="Liaison" />
           <NavItem active={activeTab === 'sync'} onClick={() => setActiveTab('sync')} icon={<RefreshCw className="w-5 h-5" />} label="Synchro" />
           <NavItem active={activeTab === 'pricing'} onClick={() => setActiveTab('pricing')} icon={<TrendingUp className="w-5 h-5" />} label={t.nav.pricing} />
           <NavItem active={activeTab === 'finances'} onClick={() => setActiveTab('finances')} icon={<CreditCard className="w-5 h-5" />} label={t.nav.finances} />
@@ -431,6 +433,10 @@ const AppContent: React.FC = () => {
                 onSync={(id, data) => setState(prev => ({ ...prev, connectedAccounts: (prev.connectedAccounts || []).map(a => a.id === id ? { ...a, ...data } : a) }))}
                 onAddInventoryItems={(items) => setState(prev => ({ ...prev, inventory: [...prev.inventory, ...items] }))}
             />}
+            {activeTab === 'matching' && <Matching 
+                state={state}
+                onUpdateInventory={(items) => setState(prev => ({ ...prev, inventory: items }))}
+            />}
           </div>
         </div>
 
@@ -438,6 +444,7 @@ const AppContent: React.FC = () => {
             {[
               { id: 'dashboard', icon: <Home className="w-6 h-6" /> },
               { id: 'inventory', icon: <Layers className="w-6 h-6" /> },
+              { id: 'matching', icon: <Link2 className="w-6 h-6" /> },
               { id: 'sync', icon: <RefreshCw className="w-6 h-6" /> },
               { id: 'pricing', icon: <TrendingUp className="w-6 h-6" /> },
               { id: 'finances', icon: <CreditCard className="w-6 h-6" /> }
