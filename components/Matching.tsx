@@ -27,7 +27,9 @@ const Matching: React.FC<Props> = ({ state, onUpdateInventory }) => {
 
   // Items that are purchases (have price, imported for example)
   const purchaseItems = useMemo(() => {
-    return state.inventory.filter(item => item.purchasePrice > 0).sort((a, b) => (b.displayId || '').localeCompare(a.displayId || ''));
+    return state.inventory
+      .filter(item => item.purchasePrice > 0 && !item.description?.includes('[LIAISON EFFECTUÉE]'))
+      .sort((a, b) => (b.displayId || '').localeCompare(a.displayId || ''));
   }, [state.inventory]);
 
   const selectedTransfer = useMemo(() => 
@@ -58,36 +60,41 @@ const Matching: React.FC<Props> = ({ state, onUpdateInventory }) => {
 
   // Smart Matching Logic
   const handleAutoMatch = () => {
-    const searchString = matchingMode === 'TRANSFERS' 
+    const isTransfers = matchingMode === 'TRANSFERS';
+    const sourcePrice = isTransfers ? (selectedTransfer?.amount || 0) : (selectedPurchaseItem?.purchasePrice || 0);
+    
+    if (sourcePrice <= 0) return;
+
+    const sourceText = isTransfers 
       ? selectedTransfer?.description.toUpperCase() || ''
-      : `${selectedPurchaseItem?.name} ${selectedPurchaseItem?.displayId}`.toUpperCase();
+      : `${selectedPurchaseItem?.name} ${selectedPurchaseItem?.displayId} ${selectedPurchaseItem?.brand}`.toUpperCase();
 
     const suggestedIds: string[] = [];
 
-    // 1. Look for #ID (e.g. #046)
-    const idMatch = searchString.match(/#(\d+)/);
+    // Extract ID and Size from source
+    const idMatch = sourceText.match(/#(\d+)/);
     const idToSearch = idMatch ? idMatch[0] : null;
 
-    // 2. Look for Size patterns
-    const sizeMatch = searchString.match(/\b([W|L]\d{2}|XXS|XS|S|M|L|XL|XXL|XXXL|[0-9]{2,3})\b/i);
+    const sizeMatch = sourceText.match(/\b([W|L]\d{2}|XXS|XS|S|M|L|XL|XXL|XXXL|[0-9]{2,3})\b/i);
     const sizeToSearch = sizeMatch ? sizeMatch[0].toUpperCase() : null;
 
     state.inventory.forEach(item => {
+      // Only target items with 0 price (or if showAll is on, but usually we target uncosted)
+      if (item.purchasePrice > 0 && !showAllItems) return;
+      if (matchingMode === 'PURCHASES' && item.id === selectedPurchaseItemId) return;
+
       let isMatch = false;
       
-      // Match by ID
+      // 1. Direct ID Match (Strongest)
       if (idToSearch && item.displayId === idToSearch) isMatch = true;
       
-      // Match by ID contained in desc
-      if (item.displayId && searchString.includes(item.displayId.toUpperCase())) isMatch = true;
+      // 2. ID contained in source text
+      if (item.displayId && sourceText.includes(item.displayId.toUpperCase())) isMatch = true;
 
-      // Match by Name keywords + Size (if in Purchase Item mode, use brand)
+      // 3. Brand + Size Match (Medium)
       if (sizeToSearch && item.size === sizeToSearch) {
-        if (matchingMode === 'PURCHASES' && selectedPurchaseItem) {
-           if (item.brand.toUpperCase() === selectedPurchaseItem.brand.toUpperCase()) isMatch = true;
-        } else if (matchingMode === 'TRANSFERS' && selectedTransfer) {
-           if (searchString.includes(item.brand.toUpperCase())) isMatch = true;
-        }
+        const itemBrand = item.brand.toUpperCase();
+        if (itemBrand !== 'INCONNU' && sourceText.includes(itemBrand)) isMatch = true;
       }
 
       if (isMatch && !selectedItemIds.includes(item.id)) {
@@ -97,6 +104,61 @@ const Matching: React.FC<Props> = ({ state, onUpdateInventory }) => {
 
     if (suggestedIds.length > 0) {
       setSelectedItemIds(prev => [...new Set([...prev, ...suggestedIds])]);
+    }
+  };
+
+  // NEW: Global Auto-Match All (Try to find matches for all uncosted items)
+  const handleAutoMatchAll = () => {
+    let updatedInventory = [...state.inventory];
+    let matchedCount = 0;
+
+    // We process each purchase item and see if it fits any uncosted item
+    purchaseItems.forEach(purchase => {
+      // Skip already linked items
+      if (purchase.description?.includes('[LIAISON EFFECTUÉE]')) return;
+
+      const pText = `${purchase.name} ${purchase.displayId} ${purchase.brand}`.toUpperCase();
+      const pId = purchase.displayId;
+      const pSize = purchase.size;
+      const pBrand = purchase.brand.toUpperCase();
+
+      const targets = updatedInventory.filter(item => 
+        item.purchasePrice === 0 && 
+        item.id !== purchase.id &&
+        (
+          (pId && item.displayId === pId) ||
+          (pId && item.name.toUpperCase().includes(pId.toUpperCase())) ||
+          (pSize && item.size === pSize && pBrand !== 'INCONNU' && item.brand.toUpperCase() === pBrand)
+        )
+      );
+
+      if (targets.length > 0) {
+        const costPerUnit = purchase.purchasePrice / targets.length;
+        
+        // Mark purchase as linked
+        const pIdx = updatedInventory.findIndex(i => i.id === purchase.id);
+        if (pIdx !== -1) {
+           updatedInventory[pIdx] = { 
+             ...updatedInventory[pIdx], 
+             description: (updatedInventory[pIdx].description || '') + ' [LIAISON EFFECTUÉE]'
+           };
+        }
+
+        targets.forEach(t => {
+          const idx = updatedInventory.findIndex(i => i.id === t.id);
+          if (idx !== -1) {
+            updatedInventory[idx] = { ...updatedInventory[idx], purchasePrice: costPerUnit };
+            matchedCount++;
+          }
+        });
+      }
+    });
+
+    if (matchedCount > 0) {
+      onUpdateInventory(updatedInventory);
+      alert(`🎉 Liaison magique terminée ! ${matchedCount} articles ont été chiffrés automatiquement.`);
+    } else {
+      alert("Aucune correspondance évidente trouvée automatiquement.");
     }
   };
 
@@ -126,6 +188,13 @@ const Matching: React.FC<Props> = ({ state, onUpdateInventory }) => {
           purchasePrice: Number(pricePerItem.toFixed(2))
         };
       }
+      // If the current item is the source of the cost, mark it as linked/consumed
+      if (matchingMode === 'PURCHASES' && selectedPurchaseItem && item.id === selectedPurchaseItem.id) {
+        return {
+          ...item,
+          description: (item.description || '') + ' [LIAISON EFFECTUÉE]'
+        };
+      }
       return item;
     });
 
@@ -149,6 +218,12 @@ const Matching: React.FC<Props> = ({ state, onUpdateInventory }) => {
             <Calculator className="w-4 h-4 text-indigo-500" /> Reliez vos flux ou vos achats importés à vos articles vendus
           </p>
         </div>
+        <button 
+          onClick={handleAutoMatchAll}
+          className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-amber-200 dark:shadow-none transition-all flex items-center gap-3"
+        >
+          <Sparkles className="w-5 h-5" /> Liaison Automatique Globale
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">

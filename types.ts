@@ -50,6 +50,7 @@ export interface InventoryItem {
   minStockThreshold?: number;
   purchasePlatform?: string;
   salePlatform?: string;
+  description?: string;
 }
 
 export interface Member {

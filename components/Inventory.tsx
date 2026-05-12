@@ -562,6 +562,9 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
 
   const filteredItems = useMemo(() => {
     let result = inventory.filter(i => {
+      // Hide purchase items that have been linked/consumed
+      if (i.description?.includes('[LIAISON EFFECTUÉE]')) return false;
+
       if (subView === 'sales' && i.status !== ItemStatus.SOLD) return false;
       const matchesSearch = !debouncedSearchTerm || 
         i.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) || 
