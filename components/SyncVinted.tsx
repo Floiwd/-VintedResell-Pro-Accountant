@@ -50,137 +50,108 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Deep Precision" v8.0 - ResellPro
+// Scraper Vinted "Ultimate" v9.0 - ResellPro
 (async () => {
-  console.log("🚀 Initialisation du Scraper Deep Precision...");
+  console.log("🚀 Lancement du Scraper Ultimate...");
   
   const statusEl = document.createElement('div');
-  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 10000; background: #6366f1; color: white; padding: 22px; border-radius: 20px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255,255,255,0.4); min-width: 280px; transition: all 0.4s ease;";
-  statusEl.innerHTML = "<div style='margin-bottom:12px; font-size:14px'>🔄 Initialisation...</div><div id='resellpro-progress' style='height:10px; background:rgba(255,255,255,0.2); border-radius:5px; overflow:hidden'><div id='resellpro-bar' style='height:100%; width:0%; background:#fff; transition:width 0.3s; border-radius:5px'></div></div>";
+  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 10000; background: #6366f1; color: white; padding: 22px; border-radius: 20px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255,255,255,0.4); min-width: 250px; text-align: center; transition: all 0.4s ease;";
+  statusEl.innerHTML = "⏳ Analyse de la page en cours...";
   document.body.appendChild(statusEl);
 
-  const updateStatus = (text, progress) => {
-    const textEl = statusEl.querySelector('div');
-    if (textEl) textEl.innerText = text;
-    const bar = statusEl.querySelector('#resellpro-bar');
-    if (bar && progress !== undefined) bar.style.width = progress + "%";
-  };
-
-  // 1. Navigation automatique vers "Toutes" si besoin
-  const tabs = Array.from(document.querySelectorAll('button, a, span'))
-    .filter(el => el.innerText.trim().toLowerCase() === 'toutes');
-  
-  if (tabs.length > 0) {
-    const tab = tabs[0];
-    const isAlreadyActive = tab.classList.contains('is-active') || 
-                           tab.parentElement?.classList.contains('is-active') ||
-                           tab.getAttribute('aria-selected') === 'true';
-    
-    if (!isAlreadyActive) {
-      updateStatus("Activation de l'onglet 'Toutes'...", 10);
-      tab.click();
-      await new Promise(r => setTimeout(r, 2000));
-    }
-  }
-
-  const isSalesPage = window.location.href.includes('type=sold');
-  updateStatus("📊 Mode : " + (isSalesPage ? "VENTES" : "ACHATS"), 20);
-
-  // 2. Scroll intelligent (Descente + Remontée)
   const smartScroll = async () => {
-    let lastHeight = 0;
-    let noChangeCount = 0;
-    
-    while (noChangeCount < 5) {
-      const currentHeight = document.body.scrollHeight;
-      window.scrollBy(0, 700);
-      
-      if (currentHeight === lastHeight) noChangeCount++;
-      else noChangeCount = 0;
-      
-      lastHeight = currentHeight;
-      let progress = 20 + Math.min(50, (window.scrollY / (currentHeight || 1)) * 50);
-      updateStatus("⏳ Scan de la page : " + Math.round(progress) + "%", progress);
-      await new Promise(r => setTimeout(r, 300));
+    for(let i=0; i<10; i++) {
+      window.scrollBy(0, 800);
+      await new Promise(r => setTimeout(r, 200));
     }
-    
-    // Remonter pour s'assurer que les images se chargent en haut aussi
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    await new Promise(r => setTimeout(r, 1000));
+    window.scrollTo(0, 0);
+    await new Promise(r => setTimeout(r, 500));
   };
 
   await smartScroll();
-  updateStatus("🕵️ Analyse des articles...", 80);
+  
+  const isSalesPage = window.location.href.includes('type=sold');
+  console.log("📊 Mode détecté : " + (isSalesPage ? "VENTES" : "ACHATS"));
 
   const items = [];
-  const priceRegex = /(\\d+[,.]\\d{2})\\s*€/;
-  
-  // 3. Stratégie "Force Brute" : Identifier les prix puis leurs titres
-  const allElements = Array.from(document.querySelectorAll('div, span, p, a, h3, h4'));
-  
-  allElements.forEach(el => {
-    const text = el.innerText.trim();
-    // On cible les éléments qui contiennent EXACTEMENT un prix (ex: "28,00 €")
-    if (priceRegex.test(text) && text.length < 15) {
-      const priceVal = parseFloat(text.match(priceRegex)[1].replace(',', '.'));
-      
-      // Remonter le DOM pour trouver le bloc parent
-      let parent = el.parentElement;
-      let title = "";
-      let image = "";
-      
-      for(let i=0; i<10; i++) {
-        if (!parent) break;
-        
-        // Un titre est un texte long dans ce bloc qui n'est pas le prix nor un statut
-        const potentialTitles = Array.from(parent.querySelectorAll('div, span, p, a, h3, h4'))
-          .map(t => t.innerText.trim())
-          .filter(t => t.length > 10 && !t.includes('€') && !t.includes('\\n'));
-        
-        // On filtre les mots-clés de statut pour isoler le vrai titre
-        const forbidden = ['commande', 'finalisée', 'évaluée', 'validé', 'remboursement', 'effectué', 'acheteur', 'vendeur', 'vendu', 'annulée', 'suivre', 'virements', 'transaction'];
-        const cleanTitles = potentialTitles.filter(t => 
-           !forbidden.some(key => t.toLowerCase().includes(key)) && t.length < 100
-        );
+  // Regex ultra-flexible pour prix Vinted (ex: 28,00 €, 28.5€, 28 €)
+  const priceRegex = /(\\d+[,.]?\\d*)\\s*€/;
 
-        if (cleanTitles.length > 0) {
-          // On prend le plus long, c'est généralement le nom du produit
-          title = cleanTitles.sort((a,b) => b.length - a.length)[0];
-          const img = parent.querySelector('img');
-          if (img && (img.src.includes('vinted') || img.src.includes('images'))) image = img.src;
-          break;
+  // 1. On cherche tous les éléments "feuilles" (sans enfants) qui contiennent un prix
+  const leafNodes = Array.from(document.querySelectorAll('span, div, p, b, strong, a'))
+    .filter(el => {
+      const text = el.innerText.trim();
+      return el.children.length === 0 && priceRegex.test(text) && text.length < 15;
+    });
+
+  leafNodes.forEach(priceEl => {
+    try {
+      const match = priceEl.innerText.match(priceRegex);
+      if (!match) return;
+      
+      const priceVal = parseFloat(match[1].replace(',', '.'));
+      if (isNaN(priceVal)) return;
+
+      // 2. On remonte pour trouver le bloc parent qui contient l'image
+      let container = priceEl.parentElement;
+      let iterations = 0;
+      
+      while (container && iterations < 10) {
+        const img = container.querySelector('img');
+        const textContent = container.innerText;
+        
+        // Un bloc valide a une image et assez de texte
+        if (img && textContent.length > 40) {
+          // 3. Extraction du titre dans ce bloc
+          const textElements = Array.from(container.querySelectorAll('span, p, div, h1, h2, h3, h4, a'))
+            .map(t => t.innerText.trim())
+            .filter(t => t.length > 10 && !t.includes('€') && !t.includes('\\n'));
+
+          const forbidden = ['commande', 'finalisée', 'évaluée', 'validé', 'remboursement', 'effectué', 'acheteur', 'vendeur', 'vendu', 'annulée', 'suivre', 'virements', 'transaction', 'mes commandes', 'ventes', 'achats'];
+          const titleCandidates = textElements.filter(t => 
+            !forbidden.some(key => t.toLowerCase().includes(key)) && t.length < 120
+          );
+
+          if (titleCandidates.length > 0) {
+            const title = titleCandidates.sort((a,b) => b.length - a.length)[0].replace(/["'\\x60]/g, '');
+            
+            items.push({
+              title: title,
+              brand: title.split(' ')[0],
+              purchasePrice: isSalesPage ? 0 : priceVal,
+              salePrice: isSalesPage ? priceVal : Math.round(priceVal * 1.6),
+              date: new Date().toISOString().split('T')[0],
+              imageUrl: img.src,
+              category: 'Vinted Import',
+              status: isSalesPage ? 'SOLD' : 'IN_STOCK'
+            });
+            break;
+          }
         }
-        parent = parent.parentElement;
+        container = container.parentElement;
+        iterations++;
       }
-
-      if (title && !isNaN(priceVal)) {
-        items.push({
-          title: title.replace(/["'\\x60]/g, ''),
-          brand: title.split(' ')[0],
-          purchasePrice: isSalesPage ? 0 : priceVal,
-          salePrice: isSalesPage ? priceVal : Math.round(priceVal * 1.6),
-          date: new Date().toISOString().split('T')[0],
-          imageUrl: image,
-          category: 'Vinted Import',
-          status: isSalesPage ? 'SOLD' : 'IN_STOCK'
-        });
-      }
+    } catch (e) {
+      console.error("Erreur sur un élément :", e);
     }
   });
 
-  // Déduplication par titre pour éviter les doublons dus aux éléments imbriqués
   const finalItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title))===i);
   
-  updateStatus("✅ " + finalItems.length + " articles !", 100);
-  statusEl.style.background = "#10b981";
-
-  console.log("📦 COPIEZ CE BLOC JSON :");
+  statusEl.style.background = finalItems.length > 0 ? "#10b981" : "#f43f5e";
+  statusEl.innerText = "✅ " + finalItems.length + " articles extraits !";
+  
+  console.log("📦 DONNÉES À COPIER :");
   console.log(JSON.stringify({ platform: 'VINTED', items: finalItems }, null, 2));
 
   setTimeout(() => {
     if (statusEl.parentElement) document.body.removeChild(statusEl);
-    alert("SYNCHRONISATION VINTED RÉUSSIE !\\n\\n" + finalItems.length + " articles récupérés (" + (isSalesPage ? "Ventes" : "Achats") + ").\\n\\n1. Ouvrez la console (F12)\\n2. Copiez l'objet JSON { platform: 'VINTED', ... }");
-  }, 2000);
+    alert("SYNCHRONISATION VINTED TERMINÉ !\\n\\n" + 
+          finalItems.length + " articles récupérés.\\n\\n" +
+          "1. Ouvrez la Console (F12)\\n" +
+          "2. Copiez l'objet JSON complet\\n" +
+          "3. Collez-le dans ResellPro.");
+  }, 3000);
 })();
     `;
     navigator.clipboard.writeText(script);
