@@ -50,101 +50,136 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Universal" v7.0 - ResellPro
+// Scraper Vinted "Deep Precision" v8.0 - ResellPro
 (async () => {
-  console.log("🚀 Initialisation du Scraper Universal...");
+  console.log("🚀 Initialisation du Scraper Deep Precision...");
   
   const statusEl = document.createElement('div');
-  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 10000; background: #6366f1; color: white; padding: 20px; border-radius: 16px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255,255,255,0.3); min-width: 250px;";
-  statusEl.innerHTML = "<div style='margin-bottom:10px'>🔄 Préparation...</div><div id='resellpro-progress' style='height:8px; background:rgba(255,255,255,0.2); border-radius:4px; overflow:hidden'><div id='resellpro-bar' style='height:100%; width:0%; background:#fff; transition:width 0.3s'></div></div>";
+  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 10000; background: #6366f1; color: white; padding: 22px; border-radius: 20px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255,255,255,0.4); min-width: 280px; transition: all 0.4s ease;";
+  statusEl.innerHTML = "<div style='margin-bottom:12px; font-size:14px'>🔄 Initialisation...</div><div id='resellpro-progress' style='height:10px; background:rgba(255,255,255,0.2); border-radius:5px; overflow:hidden'><div id='resellpro-bar' style='height:100%; width:0%; background:#fff; transition:width 0.3s; border-radius:5px'></div></div>";
   document.body.appendChild(statusEl);
 
   const updateStatus = (text, progress) => {
-    statusEl.querySelector('div').innerText = text;
-    if (progress !== undefined) statusEl.querySelector('#resellpro-bar').style.width = progress + "%";
+    const textEl = statusEl.querySelector('div');
+    if (textEl) textEl.innerText = text;
+    const bar = statusEl.querySelector('#resellpro-bar');
+    if (bar && progress !== undefined) bar.style.width = progress + "%";
   };
 
-  // 1. S'assurer d'être sur l'onglet "Toutes"
-  const allTab = Array.from(document.querySelectorAll('button, a')).find(el => el.innerText.includes('Toutes'));
-  if (allTab && !allTab.parentElement.classList.contains('is-active') && !allTab.classList.contains('is-active')) {
-    updateStatus("Clic sur l'onglet 'Toutes'...", 10);
-    allTab.click();
-    await new Promise(r => setTimeout(r, 1500));
+  // 1. Navigation automatique vers "Toutes" si besoin
+  const tabs = Array.from(document.querySelectorAll('button, a, span'))
+    .filter(el => el.innerText.trim().toLowerCase() === 'toutes');
+  
+  if (tabs.length > 0) {
+    const tab = tabs[0];
+    const isAlreadyActive = tab.classList.contains('is-active') || 
+                           tab.parentElement?.classList.contains('is-active') ||
+                           tab.getAttribute('aria-selected') === 'true';
+    
+    if (!isAlreadyActive) {
+      updateStatus("Activation de l'onglet 'Toutes'...", 10);
+      tab.click();
+      await new Promise(r => setTimeout(r, 2000));
+    }
   }
 
   const isSalesPage = window.location.href.includes('type=sold');
-  updateStatus("🔍 Mode : " + (isSalesPage ? "VENTES" : "ACHATS"), 20);
+  updateStatus("📊 Mode : " + (isSalesPage ? "VENTES" : "ACHATS"), 20);
 
-  // 2. Scroll intelligent et progressif
+  // 2. Scroll intelligent (Descente + Remontée)
   const smartScroll = async () => {
-    let currentPos = 0;
-    while (currentPos < document.body.scrollHeight) {
-      window.scrollBy(0, 500);
-      currentPos += 500;
-      let progress = 20 + Math.min(40, (currentPos / (document.body.scrollHeight || 1)) * 40);
-      updateStatus("⏳ Scroll : " + Math.round(progress) + "%", progress);
-      await new Promise(r => setTimeout(r, 150));
+    let lastHeight = 0;
+    let noChangeCount = 0;
+    
+    while (noChangeCount < 5) {
+      const currentHeight = document.body.scrollHeight;
+      window.scrollBy(0, 700);
+      
+      if (currentHeight === lastHeight) noChangeCount++;
+      else noChangeCount = 0;
+      
+      lastHeight = currentHeight;
+      let progress = 20 + Math.min(50, (window.scrollY / (currentHeight || 1)) * 50);
+      updateStatus("⏳ Scan de la page : " + Math.round(progress) + "%", progress);
+      await new Promise(r => setTimeout(r, 300));
     }
-    window.scrollTo(0, 0);
-    await new Promise(r => setTimeout(r, 500));
+    
+    // Remonter pour s'assurer que les images se chargent en haut aussi
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    await new Promise(r => setTimeout(r, 1000));
   };
 
   await smartScroll();
-  updateStatus("🕵️ Analyse profonde...", 70);
+  updateStatus("🕵️ Analyse des articles...", 80);
 
   const items = [];
   const priceRegex = /(\\d+[,.]\\d{2})\\s*€/;
   
-  // 3. Extraction par containers (plus robuste)
-  const containers = document.querySelectorAll('.u-flexbox.u-flex-direction-column, .item-card, .transaction-list-item, .cell__content, div[class*="item"]');
+  // 3. Stratégie "Force Brute" : Identifier les prix puis leurs titres
+  const allElements = Array.from(document.querySelectorAll('div, span, p, a, h3, h4'));
   
-  containers.forEach((block, idx) => {
-    try {
-      const text = block.innerText;
-      const priceMatch = text.match(priceRegex);
+  allElements.forEach(el => {
+    const text = el.innerText.trim();
+    // On cible les éléments qui contiennent EXACTEMENT un prix (ex: "28,00 €")
+    if (priceRegex.test(text) && text.length < 15) {
+      const priceVal = parseFloat(text.match(priceRegex)[1].replace(',', '.'));
       
-      if (priceMatch) {
-        const price = parseFloat(priceMatch[1].replace(',', '.'));
+      // Remonter le DOM pour trouver le bloc parent
+      let parent = el.parentElement;
+      let title = "";
+      let image = "";
+      
+      for(let i=0; i<10; i++) {
+        if (!parent) break;
         
-        const elements = Array.from(block.querySelectorAll('span, p, div, h1, h2, h3, h4'))
-          .map(el => el.innerText.trim())
-          .filter(t => t.length > 8 && !t.includes('€'));
-
-        const forbidden = ['commande', 'finalisée', 'évaluée', 'validé', 'remboursement', 'effectué', 'acheteur', 'vendeur', 'vendu', 'annulée', 'suivre'];
-        const titleCandidates = elements.filter(t => 
-           !forbidden.some(key => t.toLowerCase().includes(key)) && t.length < 120
+        // Un titre est un texte long dans ce bloc qui n'est pas le prix nor un statut
+        const potentialTitles = Array.from(parent.querySelectorAll('div, span, p, a, h3, h4'))
+          .map(t => t.innerText.trim())
+          .filter(t => t.length > 10 && !t.includes('€') && !t.includes('\\n'));
+        
+        // On filtre les mots-clés de statut pour isoler le vrai titre
+        const forbidden = ['commande', 'finalisée', 'évaluée', 'validé', 'remboursement', 'effectué', 'acheteur', 'vendeur', 'vendu', 'annulée', 'suivre', 'virements', 'transaction'];
+        const cleanTitles = potentialTitles.filter(t => 
+           !forbidden.some(key => t.toLowerCase().includes(key)) && t.length < 100
         );
 
-        const title = titleCandidates.sort((a,b) => b.length - a.length)[0];
-
-        if (title && !isNaN(price)) {
-          const img = block.querySelector('img');
-          items.push({
-            title: title.replace(/["'\\x60]/g, ''),
-            brand: title.split(' ')[0],
-            purchasePrice: isSalesPage ? 0 : price,
-            salePrice: isSalesPage ? price : Math.round(price * 1.6),
-            date: new Date().toISOString().split('T')[0],
-            imageUrl: img ? img.src : '',
-            category: 'Vinted Import',
-            status: isSalesPage ? 'SOLD' : 'IN_STOCK'
-          });
+        if (cleanTitles.length > 0) {
+          // On prend le plus long, c'est généralement le nom du produit
+          title = cleanTitles.sort((a,b) => b.length - a.length)[0];
+          const img = parent.querySelector('img');
+          if (img && (img.src.includes('vinted') || img.src.includes('images'))) image = img.src;
+          break;
         }
+        parent = parent.parentElement;
       }
-    } catch (e) {}
+
+      if (title && !isNaN(priceVal)) {
+        items.push({
+          title: title.replace(/["'\\x60]/g, ''),
+          brand: title.split(' ')[0],
+          purchasePrice: isSalesPage ? 0 : priceVal,
+          salePrice: isSalesPage ? priceVal : Math.round(priceVal * 1.6),
+          date: new Date().toISOString().split('T')[0],
+          imageUrl: image,
+          category: 'Vinted Import',
+          status: isSalesPage ? 'SOLD' : 'IN_STOCK'
+        });
+      }
+    }
   });
 
+  // Déduplication par titre pour éviter les doublons dus aux éléments imbriqués
   const finalItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title))===i);
   
   updateStatus("✅ " + finalItems.length + " articles !", 100);
   statusEl.style.background = "#10b981";
 
-  console.log("📦 DONNÉES EXTRAITES :");
+  console.log("📦 COPIEZ CE BLOC JSON :");
   console.log(JSON.stringify({ platform: 'VINTED', items: finalItems }, null, 2));
 
   setTimeout(() => {
-    document.body.removeChild(statusEl);
-    alert("EXTRACTION TERMINÉE !\\n\\n" + finalItems.length + " articles récupérés (" + (isSalesPage ? "Ventes" : "Achats") + ").\\n\\n1. Ouvrez la console (F12)\\n2. Copiez l'objet JSON { platform: 'VINTED', ... }");
+    if (statusEl.parentElement) document.body.removeChild(statusEl);
+    alert("SYNCHRONISATION VINTED RÉUSSIE !\\n\\n" + finalItems.length + " articles récupérés (" + (isSalesPage ? "Ventes" : "Achats") + ").\\n\\n1. Ouvrez la console (F12)\\n2. Copiez l'objet JSON { platform: 'VINTED', ... }");
   }, 2000);
 })();
     `;
