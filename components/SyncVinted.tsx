@@ -50,88 +50,84 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Deep Scan" pour ResellPro
+// Scraper Vinted Haute-Précision avec Auto-Scroll pour ResellPro
 (async () => {
-  console.log("🔍 Lancement du Deep Scan ResellPro...");
-  const items = [];
+  console.log("🚀 Lancement du Deep Scan avec Auto-Scroll...");
   
-  // Regex plus permissive pour les prix (gère 15€, 15.00€, 15,00 €)
+  const statusEl = document.createElement('div');
+  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 9999; background: #6366f1; color: white; padding: 15px 25px; border-radius: 12px; font-family: sans-serif; font-weight: bold; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);";
+  statusEl.innerText = "⏳ Défilement automatique en cours...";
+  document.body.appendChild(statusEl);
+
+  // Fonction de défilement pour charger tout le contenu
+  const autoScroll = async () => {
+    await new Promise((resolve) => {
+      let totalHeight = 0;
+      let distance = 100;
+      let timer = setInterval(() => {
+        let scrollHeight = document.body.scrollHeight;
+        window.scrollBy(0, distance);
+        totalHeight += distance;
+
+        if(totalHeight >= scrollHeight){
+          clearInterval(timer);
+          resolve();
+        }
+      }, 100);
+    });
+  };
+
+  await autoScroll();
+  statusEl.innerText = "🔍 Analyse des données...";
+
+  const items = [];
   const priceRegex = /(\\d+[,.]?\\d*)\\s*€/;
 
-  // On cherche tous les éléments parents qui pourraient contenir un article
-  const articleContainers = document.querySelectorAll('.u-flexbox, .item-card, .transaction-list-item, .cell__content, div[class*="item"]');
-  console.log("📦 Zones de recherche trouvées :", articleContainers.length);
-
-  articleContainers.forEach(container => {
-    // Dans chaque container, on cherche un prix et un titre
+  // On cherche les conteneurs d'articles
+  const containers = document.querySelectorAll('.u-flexbox.u-flex-direction-column, .item-card, .transaction-list-item, div[class*="item"]');
+  
+  containers.forEach(container => {
     const text = container.innerText;
     const priceMatch = text.match(priceRegex);
     
     if (priceMatch) {
       const price = parseFloat(priceMatch[1].replace(',', '.'));
       
-      // On cherche un titre : le texte le plus long du container qui n'est pas le prix
-      // ou des éléments textuels spécifiques
-      let title = "";
+      // On cherche un titre (souvent le texte le plus long ou h3/h4)
       const potentialTitles = Array.from(container.querySelectorAll('span, p, h1, h2, h3, h4, a'))
         .map(el => el.innerText.trim())
-        .filter(t => t.length > 8 && !t.includes('€') && !t.includes('\\n'));
+        .filter(t => t.length > 10 && !t.includes('€') && !t.includes('\\n') && !t.includes('Finalisé') && !t.includes('En cours'));
         
       if (potentialTitles.length > 0) {
-        title = potentialTitles[0];
-      }
-
-      if (title && !isNaN(price) && price > 0) {
-        // Image
+        const title = potentialTitles[0];
         const img = container.querySelector('img');
         
-        items.push({
-          title: title,
-          brand: title.split(' ')[0],
-          purchasePrice: price,
-          salePrice: Math.round(price * 1.6),
-          date: new Date().toISOString().split('T')[0],
-          imageUrl: img ? img.src : '',
-          category: 'Vinted Import'
-        });
+        // Extraction de la marque
+        const brandMatch = title.match(/(Levi's|Nike|Adidas|Zara|Carhartt|Dickies|Ralph Lauren|Lacoste|Puma|New Balance)/i);
+        const brand = brandMatch ? brandMatch[0] : title.split(' ')[0];
+
+        if (title && !isNaN(price) && price > 0 && title.length < 100) {
+          items.push({
+            title: title,
+            brand: brand,
+            purchasePrice: price,
+            salePrice: Math.round(price * 1.6),
+            date: new Date().toISOString().split('T')[0],
+            imageUrl: img ? img.src : '',
+            category: 'Vinted Import'
+          });
+        }
       }
     }
   });
 
-  // Fallback : Si rien trouvé, on scanne toute la page de manière atomique
-  if (items.length === 0) {
-    console.log("⚠️ Mode fallback activé...");
-    const allElements = Array.from(document.querySelectorAll('*'));
-    allElements.forEach(el => {
-      const text = el.innerText;
-      if (text && priceRegex.test(text) && text.length < 15) {
-        // On a trouvé un prix isolé, on cherche le titre au dessus
-        const price = parseFloat(text.match(priceRegex)[1].replace(',', '.'));
-        let prev = el.previousElementSibling || el.parentElement?.firstElementChild;
-        let titleCandidate = "";
-        
-        while (prev && !titleCandidate) {
-          if (prev.innerText?.length > 10) titleCandidate = prev.innerText.split('\\n')[0];
-          prev = prev.previousElementSibling;
-        }
-        
-        if (titleCandidate && !isNaN(price)) {
-          items.push({ title: titleCandidate, purchasePrice: price, salePrice: Math.round(price * 1.5), date: new Date().toISOString().split('T')[0], category: 'Vinted Import' });
-        }
-      }
-    });
-  }
-
   const uniqueItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title))===i);
-
-  console.log("✅ Articles trouvés :", uniqueItems);
   
-  if (uniqueItems.length > 0) {
-    console.log(JSON.stringify({ platform: 'VINTED', items: uniqueItems }, null, 2));
-    alert("EXTRACTION RÉUSSIE !\\n" + uniqueItems.length + " articles détectés.\\n\\nCopiez le bloc JSON dans la console.");
-  } else {
-    alert("ERREUR : Aucun article détecté.\\n\\nEssayez de rafraîchir la page ou de descendre en bas de la liste.");
-  }
+  document.body.removeChild(statusEl);
+  console.log("✅ Articles trouvés :", uniqueItems);
+  console.log(JSON.stringify({ platform: 'VINTED', items: uniqueItems }, null, 2));
+  
+  alert("SYNCHRONISATION TERMINÉE !\\n" + uniqueItems.length + " articles récupérés.\\n\\nCopiez le bloc JSON dans la console (recherchez l'objet { platform: 'VINTED', ... }).");
 })();
     `;
     navigator.clipboard.writeText(script);
