@@ -94,11 +94,22 @@ export interface FilterState {
     searchTerm?: string;
 }
 
+export interface ConnectedAccount {
+  id: string;
+  platform: 'VINTED';
+  nickname: string;
+  lastSync?: string;
+  startDate?: string;
+  endDate?: string;
+  status: 'ACTIVE' | 'DISCONNECTED';
+}
+
 export interface AppState {
   inventory: InventoryItem[];
   members: Member[];
   transfers: FinancialTransfer[];
   recurringExpenses: RecurringExpense[];
+  connectedAccounts?: ConnectedAccount[];
   cashThreshold?: number;
   monthlyGoal?: number;
   nextItemNumber: number;

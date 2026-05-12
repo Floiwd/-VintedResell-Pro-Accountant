@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Home, Layers, CreditCard, LogOut, Moon, Sun, TrendingUp, Cloud, Check, AlertCircle, Loader2, Save, Globe } from 'lucide-react';
+import { Home, Layers, CreditCard, LogOut, Moon, Sun, TrendingUp, Cloud, Check, AlertCircle, Loader2, Save, Globe, RefreshCw } from 'lucide-react';
 import { AppState, FilterState, RecurringExpense, ItemCondition, ItemStatus, ItemSubStatus } from './types';
 import { INITIAL_INVENTORY, INITIAL_MEMBERS } from './constants';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
@@ -18,6 +18,7 @@ import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
 import Finances from './components/Finances';
 import PricingGuide from './components/PricingGuide';
+import SyncVinted from './components/SyncVinted';
 import Auth from './components/Auth';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 
@@ -48,7 +49,7 @@ const AppContent: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'finances' | 'pricing'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'finances' | 'pricing' | 'sync'>('dashboard');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [loadError, setLoadError] = useState(false);
   const [cachedOrgId, setCachedOrgId] = useState<string | null>(null);
@@ -82,6 +83,7 @@ const AppContent: React.FC = () => {
     transfers: [],
     recurringExpenses: [],
     cashThreshold: 100,
+    connectedAccounts: [],
     nextItemNumber: INITIAL_INVENTORY.length + 1,
     sharedWith: [],
     filters: { brands: [], categories: [], sizes: [], status: [], dateRange: { start: '', end: '' }, sortBy: 'id_desc', searchTerm: '' },
@@ -314,6 +316,7 @@ const AppContent: React.FC = () => {
         <nav className="flex-1 px-6 space-y-2 py-4">
           <NavItem active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<Home className="w-5 h-5" />} label={t.nav.dashboard} />
           <NavItem active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} icon={<Layers className="w-5 h-5" />} label={t.nav.inventory} />
+          <NavItem active={activeTab === 'sync'} onClick={() => setActiveTab('sync')} icon={<RefreshCw className="w-5 h-5" />} label="Synchro" />
           <NavItem active={activeTab === 'pricing'} onClick={() => setActiveTab('pricing')} icon={<TrendingUp className="w-5 h-5" />} label={t.nav.pricing} />
           <NavItem active={activeTab === 'finances'} onClick={() => setActiveTab('finances')} icon={<CreditCard className="w-5 h-5" />} label={t.nav.finances} />
         </nav>
@@ -421,6 +424,13 @@ const AppContent: React.FC = () => {
                 onDeleteRecurringExpense={(id) => setState(prev => ({ ...prev, recurringExpenses: prev.recurringExpenses.filter(e => e.id !== id) }))}
                 onUpdateRecurringExpense={(exp) => setState(prev => ({ ...prev, recurringExpenses: prev.recurringExpenses.map(e => e.id === exp.id ? exp : e) }))}
             />}
+            {activeTab === 'sync' && <SyncVinted 
+                connectedAccounts={state.connectedAccounts || []}
+                onAddAccount={(acc) => setState(prev => ({ ...prev, connectedAccounts: [...(prev.connectedAccounts || []), acc] }))}
+                onDeleteAccount={(id) => setState(prev => ({ ...prev, connectedAccounts: (prev.connectedAccounts || []).filter(a => a.id !== id) }))}
+                onSync={(id, data) => setState(prev => ({ ...prev, connectedAccounts: (prev.connectedAccounts || []).map(a => a.id === id ? { ...a, ...data } : a) }))}
+                onAddInventoryItems={(items) => setState(prev => ({ ...prev, inventory: [...prev.inventory, ...items] }))}
+            />}
           </div>
         </div>
 
@@ -428,6 +438,7 @@ const AppContent: React.FC = () => {
             {[
               { id: 'dashboard', icon: <Home className="w-6 h-6" /> },
               { id: 'inventory', icon: <Layers className="w-6 h-6" /> },
+              { id: 'sync', icon: <RefreshCw className="w-6 h-6" /> },
               { id: 'pricing', icon: <TrendingUp className="w-6 h-6" /> },
               { id: 'finances', icon: <CreditCard className="w-6 h-6" /> }
             ].map(tab => (

@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "ResellPro Vinted Sync",
+  "version": "1.0",
+  "description": "Synchronise vos achats et ventes Vinted avec ResellPro",
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.vinted.fr/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
