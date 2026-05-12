@@ -50,75 +50,73 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Force Brute" pour ResellPro
+// Scraper Vinted Expert v6.0 - ResellPro
 (async () => {
-  console.log("🚀 Lancement du Scraper...");
+  console.log("🚀 Lancement du Scraper Intelligent...");
   
   const statusEl = document.createElement('div');
-  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 9999; background: #6366f1; color: white; padding: 15px 25px; border-radius: 12px; font-family: sans-serif; font-weight: bold; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);";
-  statusEl.innerText = "⏳ Chargement des articles...";
+  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 9999; background: #6366f1; color: white; padding: 18px 28px; border-radius: 16px; font-family: sans-serif; font-weight: 800; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); border: 2px solid rgba(255,255,255,0.2); transition: all 0.3s ease;";
+  statusEl.innerText = "⏳ Chargement des données...";
   document.body.appendChild(statusEl);
 
-  const autoScroll = async () => {
-    await new Promise((resolve) => {
-      let totalHeight = 0;
-      let distance = 400;
-      let timer = setInterval(() => {
-        let scrollHeight = document.body.scrollHeight;
-        window.scrollBy(0, distance);
-        totalHeight += distance;
-        if(totalHeight >= scrollHeight){
-          clearInterval(timer);
-          resolve();
-        }
-      }, 150);
-    });
+  const isSalesPage = window.location.href.includes('type=sold');
+  console.log("📊 Mode détecté : " + (isSalesPage ? "VENTES" : "ACHATS"));
+
+  const smartScroll = async () => {
+    const totalHeight = document.body.scrollHeight;
+    let currentHeight = 0;
+    while (currentHeight < totalHeight) {
+      window.scrollBy(0, 600);
+      currentHeight += 600;
+      statusEl.innerText = "⏳ Scroll : " + Math.round((currentHeight/totalHeight)*100) + "%";
+      await new Promise(r => setTimeout(r, 200));
+    }
+    window.scrollTo(0, 0);
+    await new Promise(r => setTimeout(r, 500));
   };
 
-  await autoScroll();
-  statusEl.innerText = "🔍 Analyse...";
+  await smartScroll();
+  statusEl.innerText = "🔍 Extraction des articles...";
 
   const items = [];
   const priceRegex = /(\\d+[,.]\\d{2})\\s*€/;
-
-  const allElements = document.querySelectorAll('div, span, p, h1, h2, h3, a');
   
-  allElements.forEach(el => {
-    const text = el.innerText.trim();
-    if (priceRegex.test(text) && text.length < 15) {
-      const priceVal = parseFloat(text.match(priceRegex)[1].replace(',', '.'));
+  const blocks = document.querySelectorAll('.u-flexbox.u-flex-direction-column, .item-card, .transaction-list-item, .cell__content, div[class*="item"]');
+  
+  blocks.forEach(block => {
+    try {
+      const text = block.innerText;
+      const priceMatch = text.match(priceRegex);
       
-      let parent = el.parentElement;
-      let title = "";
-      let image = "";
-      
-      for(let i=0; i<8; i++) {
-        if (!parent) break;
-        const potentialTitles = Array.from(parent.querySelectorAll('div, span, p, h2, h3, h4'))
-          .map(t => t.innerText.trim())
-          .filter(t => t.length > 8 && !t.includes('€') && !t.includes('\\n') && !t.includes('Finalisé'));
+      if (priceMatch) {
+        const price = parseFloat(priceMatch[1].replace(',', '.'));
         
-        if (potentialTitles.length > 0) {
-          title = potentialTitles[0].replace(/["'\x60]/g, ''); // Nettoyage des quotes
-          const img = parent.querySelector('img');
-          if (img && img.src.includes('vinted')) image = img.src;
-          break;
-        }
-        parent = parent.parentElement;
-      }
+        const elements = Array.from(block.querySelectorAll('span, p, div, h1, h2, h3, h4'))
+          .map(el => el.innerText.trim())
+          .filter(t => t.length > 5 && !t.includes('€'));
 
-      if (title && !isNaN(priceVal)) {
-        items.push({
-          title: title,
-          brand: title.split(' ')[0],
-          purchasePrice: priceVal,
-          salePrice: Math.round(priceVal * 1.5),
-          date: new Date().toISOString().split('T')[0],
-          imageUrl: image,
-          category: 'Vinted Import'
-        });
+        const forbidden = ['commande', 'finalisée', 'évaluée', 'validé', 'remboursement', 'effectué', 'acheteur', 'vendeur', 'vendu', 'annulée', 'suivre'];
+        const titleCandidates = elements.filter(t => 
+           !forbidden.some(key => t.toLowerCase().includes(key)) && t.length < 100
+        );
+
+        const title = titleCandidates.sort((a,b) => b.length - a.length)[0];
+
+        if (title && !isNaN(price)) {
+          const img = block.querySelector('img');
+          items.push({
+            title: title.replace(/["'\\x60]/g, ''),
+            brand: title.split(' ')[0],
+            purchasePrice: isSalesPage ? 0 : price,
+            salePrice: isSalesPage ? price : Math.round(price * 1.6),
+            date: new Date().toISOString().split('T')[0],
+            imageUrl: img ? img.src : '',
+            category: 'Vinted Import',
+            status: isSalesPage ? 'SOLD' : 'IN_STOCK'
+          });
+        }
       }
-    }
+    } catch (e) {}
   });
 
   const finalItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title))===i);
@@ -126,13 +124,13 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
   statusEl.style.background = "#10b981";
   statusEl.innerText = "✅ " + finalItems.length + " articles récupérés !";
   
-  console.log("📦 COPIEZ LE BLOC CI-DESSOUS :");
+  console.log("📦 COPIEZ LE BLOC JSON CI-DESSOUS :");
   console.log(JSON.stringify({ platform: 'VINTED', items: finalItems }, null, 2));
 
   setTimeout(() => {
     document.body.removeChild(statusEl);
-    alert("EXTRACTION TERMINÉE !\\n\\n" + finalItems.length + " articles trouvés.\\n\\nCopiez le texte JSON dans la console.");
-  }, 1000);
+    alert("EXTRACTION TERMINÉE !\\n\\n" + finalItems.length + " articles détectés (" + (isSalesPage ? "Ventes" : "Achats") + ").\\n\\n1. Ouvrez la console (F12)\\n2. Copiez l'objet JSON { platform: 'VINTED', ... }");
+  }, 2000);
 })();
     `;
     navigator.clipboard.writeText(script);
