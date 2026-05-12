@@ -50,9 +50,9 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Guard-Advanced" v14.0 - ResellPro
+// Scraper Vinted "Guard-Advanced" v14.1 - ResellPro
 (async () => {
-  console.log("🚀 Lancement du Scraper Guard-Advanced v14.0...");
+  console.log("🚀 Lancement du Scraper Guard-Advanced v14.1...");
   
   const statusEl = document.createElement('div');
   const style = "position: fixed; top: 20px; right: 20px; z-index: 10000; background: #6366f1; color: white; padding: 25px; border-radius: 24px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255,255,255,0.4); min-width: 320px; text-align: center; transition: all 0.4s ease;";
@@ -75,7 +75,7 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   await autoScroll();
   
-  const isSalesPage = window.location.href.includes('type=sold') || window.location.href.includes('/items');
+  const isSalesPage = window.location.href.includes('type=sold');
   const items = [];
   const priceRegex = /(\\d+[,.]?\\d*)\\s*€/;
   const idRegex = /#(\\d+)/;
@@ -130,6 +130,17 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
             if (title.includes('http') || title.includes('.js') || title.includes('www.')) return;
 
             const fullText = container.innerText;
+            const fullTextLower = fullText.toLowerCase();
+            
+            // DETECTION VENDU AMÉLIORÉE
+            const hasSoldLabel = fullTextLower.includes('vendu') || 
+                               fullTextLower.includes('sold') || 
+                               fullTextLower.includes('verkocht') ||
+                               fullTextLower.includes('venduto') ||
+                               container.querySelector('[aria-label*="vendu"]') ||
+                               container.querySelector('[aria-label*="sold"]');
+
+            const itemStatus = (isSalesPage || hasSoldLabel) ? 'SOLD' : 'IN_STOCK';
             
             // Search ID in title first, then full container text
             const idMatch = title.match(idRegex) || fullText.match(idRegex);
@@ -143,12 +154,12 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
               title: title,
               brand: title.split(' ')[0],
               size: foundSize,
-              purchasePrice: isSalesPage ? 0 : Number(priceVal.toFixed(2)),
-              salePrice: isSalesPage ? Number(priceVal.toFixed(2)) : Number((priceVal * 1.6).toFixed(2)),
+              purchasePrice: itemStatus === 'SOLD' ? 0 : Number(priceVal.toFixed(2)),
+              salePrice: itemStatus === 'SOLD' ? Number(priceVal.toFixed(2)) : Number((priceVal * 1.6).toFixed(2)),
               date: new Date().toISOString().split('T')[0],
               imageUrl: img.src,
               category: 'Vinted Import',
-              status: isSalesPage ? 'SOLD' : 'IN_STOCK'
+              status: itemStatus
             });
             break; 
           }
@@ -220,7 +231,7 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
     setTimeout(() => statusEl.remove(), 5000);
   }
 
-  console.log("%cResellPro Scraper v14.0 Output (Nettoyé):", "color: #6366f1; font-weight: bold; font-size: 16px;");
+  console.log("%cResellPro Scraper v14.1 Output (Nettoyé):", "color: #6366f1; font-weight: bold; font-size: 16px;");
   console.log(jsonOutput);
 })();
     `;
