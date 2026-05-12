@@ -50,9 +50,9 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Iron-Guard-Pro" v13.5 - ResellPro
+// Scraper Vinted "Guard-Advanced" v14.0 - ResellPro
 (async () => {
-  console.log("🚀 Lancement du Scraper Iron-Guard-Pro v13.5...");
+  console.log("🚀 Lancement du Scraper Guard-Advanced v14.0...");
   
   const statusEl = document.createElement('div');
   const style = "position: fixed; top: 20px; right: 20px; z-index: 10000; background: #6366f1; color: white; padding: 25px; border-radius: 24px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255,255,255,0.4); min-width: 320px; text-align: center; transition: all 0.4s ease;";
@@ -75,9 +75,11 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   await autoScroll();
   
-  const isSalesPage = window.location.href.includes('type=sold');
+  const isSalesPage = window.location.href.includes('type=sold') || window.location.href.includes('/items');
   const items = [];
   const priceRegex = /(\\d+[,.]?\\d*)\\s*€/;
+  const idRegex = /(?:#|ID|SHP|REF)\\s*(\\d+)|\\b(\\d{3,})\\b/;
+  const sizeRegex = /\\b(W\\d{2}\\s*L\\d{2}|XXS|XS|S|M|L|XL|XXL|XXXL|[2-6][0-9])\\b/i;
 
   const allImages = Array.from(document.querySelectorAll('img')).filter(img => {
     const src = img.src || "";
@@ -127,9 +129,18 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
             if (wordCount < 3) return;
             if (title.includes('http') || title.includes('.js') || title.includes('www.')) return;
 
+            const fullText = container.innerText;
+            const idMatch = fullText.match(idRegex);
+            const foundId = idMatch ? (idMatch[1] || idMatch[2]) : null;
+            
+            const sizeMatch = fullText.match(sizeRegex);
+            const foundSize = sizeMatch ? sizeMatch[0].toUpperCase() : '';
+
             items.push({
+              id: foundId ? "#" + foundId : null,
               title: title,
               brand: title.split(' ')[0],
+              size: foundSize,
               purchasePrice: isSalesPage ? 0 : Number(priceVal.toFixed(2)),
               salePrice: isSalesPage ? Number(priceVal.toFixed(2)) : Number((priceVal * 1.6).toFixed(2)),
               date: new Date().toISOString().split('T')[0],
@@ -207,7 +218,7 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
     setTimeout(() => statusEl.remove(), 5000);
   }
 
-  console.log("%cResellPro Scraper v13.1 Output (Nettoyé):", "color: #6366f1; font-weight: bold; font-size: 16px;");
+  console.log("%cResellPro Scraper v14.0 Output (Nettoyé):", "color: #6366f1; font-weight: bold; font-size: 16px;");
   console.log(jsonOutput);
 })();
     `;
@@ -255,7 +266,7 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
         fees: 0,
         shippingCost: 0,
         boostCost: 0,
-        status: ItemStatus.IN_STOCK,
+        status: item.status === 'SOLD' ? ItemStatus.SOLD : ItemStatus.IN_STOCK,
         subStatus: ItemSubStatus.NONE,
         purchaseDate: item.date || new Date().toISOString().split('T')[0],
         category: item.category || 'Vêtements',
