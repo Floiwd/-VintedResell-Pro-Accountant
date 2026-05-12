@@ -50,70 +50,87 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Force Brute" - Version Finale
+// Scraper Vinted "Deep Scan" pour ResellPro
 (async () => {
-  console.log("🚀 Lancement du scraper de secours...");
+  console.log("🔍 Lancement du Deep Scan ResellPro...");
   const items = [];
-  const priceRegex = /(\d+[.,]\d{2})\s*€/;
-
-  // On récupère TOUS les éléments de texte de la page
-  const elements = Array.from(document.querySelectorAll('div, span, p, h1, h2, h3, a'));
   
-  // On filtre ceux qui contiennent un prix
-  const priceElements = elements.filter(el => priceRegex.test(el.innerText) && el.innerText.length < 15);
+  // Regex plus permissive pour les prix (gère 15€, 15.00€, 15,00 €)
+  const priceRegex = /(\\d+[,.]?\\d*)\\s*€/;
 
-  console.log("💰 Éléments prix trouvés :", priceElements.length);
+  // On cherche tous les éléments parents qui pourraient contenir un article
+  const articleContainers = document.querySelectorAll('.u-flexbox, .item-card, .transaction-list-item, .cell__content, div[class*="item"]');
+  console.log("📦 Zones de recherche trouvées :", articleContainers.length);
 
-  priceElements.forEach(priceEl => {
-    const priceText = priceEl.innerText.match(priceRegex)[1].replace(',', '.');
-    const price = parseFloat(priceText);
-
-    // On cherche un titre dans les éléments VRAIMENT proches (voisins ou parents directs)
-    let title = "";
-    let container = priceEl.parentElement;
+  articleContainers.forEach(container => {
+    // Dans chaque container, on cherche un prix et un titre
+    const text = container.innerText;
+    const priceMatch = text.match(priceRegex);
     
-    // On remonte un peu et on cherche du texte long (>10 char) qui n'est pas le prix
-    for(let i=0; i<4; i++) {
-        if (!container) break;
-        const potentialTitles = Array.from(container.querySelectorAll('div, span, p, h1, h2, h3'))
-            .map(el => el.innerText.trim())
-            .filter(t => t.length > 10 && !t.includes('€') && !t.includes('Transaction') && !t.includes('évalué'));
+    if (priceMatch) {
+      const price = parseFloat(priceMatch[1].replace(',', '.'));
+      
+      // On cherche un titre : le texte le plus long du container qui n'est pas le prix
+      // ou des éléments textuels spécifiques
+      let title = "";
+      const potentialTitles = Array.from(container.querySelectorAll('span, p, h1, h2, h3, h4, a'))
+        .map(el => el.innerText.trim())
+        .filter(t => t.length > 8 && !t.includes('€') && !t.includes('\\n'));
         
-        if (potentialTitles.length > 0) {
-            title = potentialTitles[0];
-            break;
-        }
-        container = container.parentElement;
-    }
+      if (potentialTitles.length > 0) {
+        title = potentialTitles[0];
+      }
 
-    if (title && !isNaN(price)) {
-      items.push({
-        title: title,
-        brand: title.split(' ')[0],
-        purchasePrice: price,
-        salePrice: Math.round(price * 1.5),
-        date: new Date().toISOString().split('T')[0],
-        category: 'Vinted Import'
-      });
+      if (title && !isNaN(price) && price > 0) {
+        // Image
+        const img = container.querySelector('img');
+        
+        items.push({
+          title: title,
+          brand: title.split(' ')[0],
+          purchasePrice: price,
+          salePrice: Math.round(price * 1.6),
+          date: new Date().toISOString().split('T')[0],
+          imageUrl: img ? img.src : '',
+          category: 'Vinted Import'
+        });
+      }
     }
   });
 
-  // Suppression des doublons
+  // Fallback : Si rien trouvé, on scanne toute la page de manière atomique
+  if (items.length === 0) {
+    console.log("⚠️ Mode fallback activé...");
+    const allElements = Array.from(document.querySelectorAll('*'));
+    allElements.forEach(el => {
+      const text = el.innerText;
+      if (text && priceRegex.test(text) && text.length < 15) {
+        // On a trouvé un prix isolé, on cherche le titre au dessus
+        const price = parseFloat(text.match(priceRegex)[1].replace(',', '.'));
+        let prev = el.previousElementSibling || el.parentElement?.firstElementChild;
+        let titleCandidate = "";
+        
+        while (prev && !titleCandidate) {
+          if (prev.innerText?.length > 10) titleCandidate = prev.innerText.split('\\n')[0];
+          prev = prev.previousElementSibling;
+        }
+        
+        if (titleCandidate && !isNaN(price)) {
+          items.push({ title: titleCandidate, purchasePrice: price, salePrice: Math.round(price * 1.5), date: new Date().toISOString().split('T')[0], category: 'Vinted Import' });
+        }
+      }
+    });
+  }
+
   const uniqueItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title))===i);
 
-  const data = {
-    platform: 'VINTED',
-    timestamp: new Date().toISOString(),
-    items: uniqueItems
-  };
-
-  console.log("✅ Données extraites :", uniqueItems);
+  console.log("✅ Articles trouvés :", uniqueItems);
   
   if (uniqueItems.length > 0) {
-    console.log(JSON.stringify(data, null, 2));
-    alert("EXTRACTION RÉUSSIE !\\n\\n" + uniqueItems.length + " articles détectés.\\n\\nCopiez le texte JSON dans la console.");
+    console.log(JSON.stringify({ platform: 'VINTED', items: uniqueItems }, null, 2));
+    alert("EXTRACTION RÉUSSIE !\\n" + uniqueItems.length + " articles détectés.\\n\\nCopiez le bloc JSON dans la console.");
   } else {
-    alert("ÉCHEC : Aucun article détecté.\\n\\nVérifiez que vous êtes sur la page 'Mes Commandes' et que les articles sont visibles.");
+    alert("ERREUR : Aucun article détecté.\\n\\nEssayez de rafraîchir la page ou de descendre en bas de la liste.");
   }
 })();
     `;
