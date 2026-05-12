@@ -50,21 +50,71 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Vinted Data Scraper for ResellPro
+// Scraper Vinted "Force Brute" - Version Finale
 (async () => {
-  console.log("Extraction des données Vinted en cours...");
-  // Note: This is an example script. In a real scenario, this would navigate to 
-  // user settings or transaction history and scrape DOM elements.
-  // For now, it's a placeholder that explains the process.
+  console.log("🚀 Lancement du scraper de secours...");
+  const items = [];
+  const priceRegex = /(\d+[.,]\d{2})\s*€/;
+
+  // On récupère TOUS les éléments de texte de la page
+  const elements = Array.from(document.querySelectorAll('div, span, p, h1, h2, h3, a'));
   
+  // On filtre ceux qui contiennent un prix
+  const priceElements = elements.filter(el => priceRegex.test(el.innerText) && el.innerText.length < 15);
+
+  console.log("💰 Éléments prix trouvés :", priceElements.length);
+
+  priceElements.forEach(priceEl => {
+    const priceText = priceEl.innerText.match(priceRegex)[1].replace(',', '.');
+    const price = parseFloat(priceText);
+
+    // On cherche un titre dans les éléments VRAIMENT proches (voisins ou parents directs)
+    let title = "";
+    let container = priceEl.parentElement;
+    
+    // On remonte un peu et on cherche du texte long (>10 char) qui n'est pas le prix
+    for(let i=0; i<4; i++) {
+        if (!container) break;
+        const potentialTitles = Array.from(container.querySelectorAll('div, span, p, h1, h2, h3'))
+            .map(el => el.innerText.trim())
+            .filter(t => t.length > 10 && !t.includes('€') && !t.includes('Transaction') && !t.includes('évalué'));
+        
+        if (potentialTitles.length > 0) {
+            title = potentialTitles[0];
+            break;
+        }
+        container = container.parentElement;
+    }
+
+    if (title && !isNaN(price)) {
+      items.push({
+        title: title,
+        brand: title.split(' ')[0],
+        purchasePrice: price,
+        salePrice: Math.round(price * 1.5),
+        date: new Date().toISOString().split('T')[0],
+        category: 'Vinted Import'
+      });
+    }
+  });
+
+  // Suppression des doublons
+  const uniqueItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title))===i);
+
   const data = {
     platform: 'VINTED',
     timestamp: new Date().toISOString(),
-    items: [] // Scraped data goes here
+    items: uniqueItems
   };
 
-  alert("Script de récupération activé. Veuillez copier le résultat JSON affiché dans la console une fois terminé.");
-  console.log(JSON.stringify(data, null, 2));
+  console.log("✅ Données extraites :", uniqueItems);
+  
+  if (uniqueItems.length > 0) {
+    console.log(JSON.stringify(data, null, 2));
+    alert("EXTRACTION RÉUSSIE !\\n\\n" + uniqueItems.length + " articles détectés.\\n\\nCopiez le texte JSON dans la console.");
+  } else {
+    alert("ÉCHEC : Aucun article détecté.\\n\\nVérifiez que vous êtes sur la page 'Mes Commandes' et que les articles sont visibles.");
+  }
 })();
     `;
     navigator.clipboard.writeText(script);
