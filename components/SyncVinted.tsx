@@ -77,9 +77,9 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
   
   const isSalesPage = window.location.href.includes('type=sold') || window.location.href.includes('/items');
   const items = [];
-  const priceRegex = /(\\d+[,.]?\\d*)\\s*€/;
-  const idRegex = /(?:#|ID|SHP|REF)\\s*(\\d+)|\\b(\\d{3,})\\b/;
-  const sizeRegex = /\\b(W\\d{2}\\s*L\\d{2}|XXS|XS|S|M|L|XL|XXL|XXXL|[2-6][0-9])\\b/i;
+  const priceRegex = /(\d+[,.]?\d*)\s*€/;
+  const idRegex = /#(\d+)/;
+  const sizeRegex = /\b(W\d{2}\s*L\d{2}|XXS|XS|S|M|L|XL|XXL|XXXL|[2-6][0-9])\b/i;
 
   const allImages = Array.from(document.querySelectorAll('img')).filter(img => {
     const src = img.src || "";
@@ -130,14 +130,17 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
             if (title.includes('http') || title.includes('.js') || title.includes('www.')) return;
 
             const fullText = container.innerText;
-            const idMatch = fullText.match(idRegex);
-            const foundId = idMatch ? (idMatch[1] || idMatch[2]) : null;
+            const title = cleanTitles.sort((a,b) => b.length - a.length)[0].replace(/["'\\x60]/g, '');
             
-            const sizeMatch = fullText.match(sizeRegex);
+            // Search ID in title first, then full container text
+            const idMatch = title.match(idRegex) || fullText.match(idRegex);
+            const foundId = idMatch ? idMatch[0] : null; 
+            
+            const sizeMatch = title.match(sizeRegex) || fullText.match(sizeRegex);
             const foundSize = sizeMatch ? sizeMatch[0].toUpperCase() : '';
 
             items.push({
-              id: foundId ? "#" + foundId : null,
+              id: foundId,
               title: title,
               brand: title.split(' ')[0],
               size: foundSize,
