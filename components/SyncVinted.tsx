@@ -50,20 +50,20 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted Haute-Précision avec Auto-Scroll pour ResellPro
+// Scraper Vinted Haute-Précision Intégral pour ResellPro
 (async () => {
-  console.log("🚀 Lancement du Deep Scan avec Auto-Scroll...");
+  console.log("🚀 Lancement du Scraper Intégral...");
   
   const statusEl = document.createElement('div');
-  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 9999; background: #6366f1; color: white; padding: 15px 25px; border-radius: 12px; font-family: sans-serif; font-weight: bold; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);";
-  statusEl.innerText = "⏳ Défilement automatique en cours...";
+  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 9999; background: #6366f1; color: white; padding: 15px 25px; border-radius: 12px; font-family: sans-serif; font-weight: bold; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); transition: all 0.3s ease;";
+  statusEl.innerText = "⏳ Chargement de tous les articles... (Patientez)";
   document.body.appendChild(statusEl);
 
-  // Fonction de défilement pour charger tout le contenu
+  // Auto-scroll progressif pour laisser le temps de chargement des images et articles
   const autoScroll = async () => {
     await new Promise((resolve) => {
       let totalHeight = 0;
-      let distance = 100;
+      let distance = 300;
       let timer = setInterval(() => {
         let scrollHeight = document.body.scrollHeight;
         window.scrollBy(0, distance);
@@ -73,7 +73,7 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
           clearInterval(timer);
           resolve();
         }
-      }, 100);
+      }, 200);
     });
   };
 
@@ -81,53 +81,65 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
   statusEl.innerText = "🔍 Analyse des données...";
 
   const items = [];
-  const priceRegex = /(\\d+[,.]?\\d*)\\s*€/;
+  const priceRegex = /(\d+[,.]\d{2})\s*€/;
 
-  // On cherche les conteneurs d'articles
-  const containers = document.querySelectorAll('.u-flexbox.u-flex-direction-column, .item-card, .transaction-list-item, div[class*="item"]');
+  // On cherche tous les éléments qui contiennent un prix (sans enfants pour cibler l'étiquette de prix directe)
+  const allElements = document.querySelectorAll('div, span, p, h1, h2, h3, a');
   
-  containers.forEach(container => {
-    const text = container.innerText;
-    const priceMatch = text.match(priceRegex);
-    
-    if (priceMatch) {
-      const price = parseFloat(priceMatch[1].replace(',', '.'));
+  allElements.forEach(el => {
+    const text = el.innerText.trim();
+    if (priceRegex.test(text) && text.length < 15) {
+      const priceVal = parseFloat(text.match(priceRegex)[1].replace(',', '.'));
       
-      // On cherche un titre (souvent le texte le plus long ou h3/h4)
-      const potentialTitles = Array.from(container.querySelectorAll('span, p, h1, h2, h3, h4, a'))
-        .map(el => el.innerText.trim())
-        .filter(t => t.length > 10 && !t.includes('€') && !t.includes('\\n') && !t.includes('Finalisé') && !t.includes('En cours'));
+      // On cherche le titre dans le conteneur parent (on remonte jusqu'à 6 niveaux)
+      let parent = el.parentElement;
+      let title = "";
+      let image = "";
+      
+      for(let i=0; i<7; i++) {
+        if (!parent) break;
         
-      if (potentialTitles.length > 0) {
-        const title = potentialTitles[0];
-        const img = container.querySelector('img');
+        // Un titre est un texte long qui ne contient pas d'euro
+        const potentialTitles = Array.from(parent.querySelectorAll('div, span, p, h2, h3, h4'))
+          .map(t => t.innerText.trim())
+          .filter(t => t.length > 10 && !t.includes('€') && !t.includes('\n') && !t.includes('Finalisé') && !t.includes('Évalué'));
         
-        // Extraction de la marque
-        const brandMatch = title.match(/(Levi's|Nike|Adidas|Zara|Carhartt|Dickies|Ralph Lauren|Lacoste|Puma|New Balance)/i);
-        const brand = brandMatch ? brandMatch[0] : title.split(' ')[0];
-
-        if (title && !isNaN(price) && price > 0 && title.length < 100) {
-          items.push({
-            title: title,
-            brand: brand,
-            purchasePrice: price,
-            salePrice: Math.round(price * 1.6),
-            date: new Date().toISOString().split('T')[0],
-            imageUrl: img ? img.src : '',
-            category: 'Vinted Import'
-          });
+        if (potentialTitles.length > 0) {
+          title = potentialTitles[0];
+          const img = parent.querySelector('img');
+          if (img && img.src.includes('vinted')) image = img.src;
+          break;
         }
+        parent = parent.parentElement;
+      }
+
+      if (title && !isNaN(priceVal)) {
+        items.push({
+          title: title,
+          brand: title.split(' ')[0],
+          purchasePrice: priceVal,
+          salePrice: Math.round(priceVal * 1.5),
+          date: new Date().toISOString().split('T')[0],
+          imageUrl: image,
+          category: 'Vinted Import'
+        });
       }
     }
   });
 
-  const uniqueItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title))===i);
+  // Déduplication finale par titre
+  const finalItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title))===i);
   
-  document.body.removeChild(statusEl);
-  console.log("✅ Articles trouvés :", uniqueItems);
-  console.log(JSON.stringify({ platform: 'VINTED', items: uniqueItems }, null, 2));
+  statusEl.style.background = "#10b981";
+  statusEl.innerText = "✅ " + finalItems.length + " articles récupérés !";
   
-  alert("SYNCHRONISATION TERMINÉE !\\n" + uniqueItems.length + " articles récupérés.\\n\\nCopiez le bloc JSON dans la console (recherchez l'objet { platform: 'VINTED', ... }).");
+  console.log("📦 DONNÉES EXTRAITES :");
+  console.log(JSON.stringify({ platform: 'VINTED', items: finalItems }, null, 2));
+
+  setTimeout(() => {
+    document.body.removeChild(statusEl);
+    alert("SYNCHRONISATION RÉUSSIE ! \n\n" + finalItems.length + " articles récupérés. \n\nCopiez le bloc JSON dans la console.");
+  }, 3000);
 })();
     `;
     navigator.clipboard.writeText(script);
