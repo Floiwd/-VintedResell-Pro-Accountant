@@ -50,40 +50,37 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted Haute-Précision Intégral pour ResellPro
+// Scraper Vinted "Force Brute" pour ResellPro
 (async () => {
-  console.log("🚀 Lancement du Scraper Intégral...");
+  console.log("🚀 Lancement du Scraper...");
   
   const statusEl = document.createElement('div');
-  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 9999; background: #6366f1; color: white; padding: 15px 25px; border-radius: 12px; font-family: sans-serif; font-weight: bold; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); transition: all 0.3s ease;";
-  statusEl.innerText = "⏳ Chargement de tous les articles... (Patientez)";
+  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 9999; background: #6366f1; color: white; padding: 15px 25px; border-radius: 12px; font-family: sans-serif; font-weight: bold; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);";
+  statusEl.innerText = "⏳ Chargement des articles...";
   document.body.appendChild(statusEl);
 
-  // Auto-scroll progressif pour laisser le temps de chargement des images et articles
   const autoScroll = async () => {
     await new Promise((resolve) => {
       let totalHeight = 0;
-      let distance = 300;
+      let distance = 400;
       let timer = setInterval(() => {
         let scrollHeight = document.body.scrollHeight;
         window.scrollBy(0, distance);
         totalHeight += distance;
-
         if(totalHeight >= scrollHeight){
           clearInterval(timer);
           resolve();
         }
-      }, 200);
+      }, 150);
     });
   };
 
   await autoScroll();
-  statusEl.innerText = "🔍 Analyse des données...";
+  statusEl.innerText = "🔍 Analyse...";
 
   const items = [];
-  const priceRegex = /(\d+[,.]\d{2})\s*€/;
+  const priceRegex = /(\\d+[,.]\\d{2})\\s*€/;
 
-  // On cherche tous les éléments qui contiennent un prix (sans enfants pour cibler l'étiquette de prix directe)
   const allElements = document.querySelectorAll('div, span, p, h1, h2, h3, a');
   
   allElements.forEach(el => {
@@ -91,21 +88,18 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
     if (priceRegex.test(text) && text.length < 15) {
       const priceVal = parseFloat(text.match(priceRegex)[1].replace(',', '.'));
       
-      // On cherche le titre dans le conteneur parent (on remonte jusqu'à 6 niveaux)
       let parent = el.parentElement;
       let title = "";
       let image = "";
       
-      for(let i=0; i<7; i++) {
+      for(let i=0; i<8; i++) {
         if (!parent) break;
-        
-        // Un titre est un texte long qui ne contient pas d'euro
         const potentialTitles = Array.from(parent.querySelectorAll('div, span, p, h2, h3, h4'))
           .map(t => t.innerText.trim())
-          .filter(t => t.length > 10 && !t.includes('€') && !t.includes('\n') && !t.includes('Finalisé') && !t.includes('Évalué'));
+          .filter(t => t.length > 8 && !t.includes('€') && !t.includes('\\n') && !t.includes('Finalisé'));
         
         if (potentialTitles.length > 0) {
-          title = potentialTitles[0];
+          title = potentialTitles[0].replace(/["'\x60]/g, ''); // Nettoyage des quotes
           const img = parent.querySelector('img');
           if (img && img.src.includes('vinted')) image = img.src;
           break;
@@ -127,19 +121,18 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
     }
   });
 
-  // Déduplication finale par titre
   const finalItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title))===i);
   
   statusEl.style.background = "#10b981";
   statusEl.innerText = "✅ " + finalItems.length + " articles récupérés !";
   
-  console.log("📦 DONNÉES EXTRAITES :");
+  console.log("📦 COPIEZ LE BLOC CI-DESSOUS :");
   console.log(JSON.stringify({ platform: 'VINTED', items: finalItems }, null, 2));
 
   setTimeout(() => {
     document.body.removeChild(statusEl);
-    alert("SYNCHRONISATION RÉUSSIE ! \n\n" + finalItems.length + " articles récupérés. \n\nCopiez le bloc JSON dans la console.");
-  }, 3000);
+    alert("EXTRACTION TERMINÉE !\\n\\n" + finalItems.length + " articles trouvés.\\n\\nCopiez le texte JSON dans la console.");
+  }, 1000);
 })();
     `;
     navigator.clipboard.writeText(script);
