@@ -18,6 +18,8 @@ const Dashboard: React.FC<Props> = ({ state, onBrandClick }) => {
   const { t } = useLanguage();
   const { inventory, monthlyGoal = 1000 } = state;
 
+  const [sortMetric, setSortMetric] = React.useState<'profit' | 'margin' | 'rotation'>('profit');
+
   const stats = useMemo(() => {
     const soldItems = inventory.filter(i => i.status === ItemStatus.SOLD || i.status === ItemStatus.PAYMENT_PENDING);
     const inStockItems = inventory.filter(i => i.status === ItemStatus.IN_STOCK || i.status === ItemStatus.TRANSIT);
@@ -25,13 +27,32 @@ const Dashboard: React.FC<Props> = ({ state, onBrandClick }) => {
     const avgMargin = soldItems.length > 0 ? (totalProfit / soldItems.length) : 0;
     
     const profitabilityByItem = soldItems
-      .map(i => ({
-        name: i.displayId || i.name.substring(0, 12),
-        purchase: i.purchasePrice,
-        sale: i.salePrice,
-        profit: i.salePrice - i.purchasePrice - (i.boostCost || 0)
-      }))
-      .sort((a, b) => b.profit - a.profit)
+      .map(i => {
+        const profit = i.salePrice - i.purchasePrice - (i.boostCost || 0);
+        const margin = i.salePrice > 0 ? (profit / i.salePrice) * 100 : 0;
+        
+        let rotation = 0;
+        if (i.receptionDate && i.saleDate) {
+          const start = new Date(i.receptionDate);
+          const end = new Date(i.saleDate);
+          rotation = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        }
+
+        return {
+          name: i.displayId || i.name.substring(0, 12),
+          purchase: i.purchasePrice,
+          sale: i.salePrice,
+          profit,
+          margin,
+          rotation
+        };
+      })
+      .sort((a, b) => {
+        if (sortMetric === 'profit') return b.profit - a.profit;
+        if (sortMetric === 'margin') return b.margin - a.margin;
+        if (sortMetric === 'rotation') return a.rotation - b.rotation; // Lower is better for rotation
+        return 0;
+      })
       .slice(0, 15);
 
     // Monthly Stats (Revenue & Profit)
@@ -188,10 +209,32 @@ const Dashboard: React.FC<Props> = ({ state, onBrandClick }) => {
         </div>
       )}
 
-      <div className="bg-white dark:bg-[#0F172A] p-10 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm">
-          <h3 className="text-sm font-black uppercase text-slate-900 dark:text-white mb-10 flex items-center gap-3">
-              <TrendingUp className="w-5 h-5 text-indigo-500" /> {t.dashboard.profitability_chart}
-          </h3>
+      <div className="bg-white dark:bg-[#0F172A] p-10 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm transition-all">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+              <h3 className="text-sm font-black uppercase text-slate-900 dark:text-white flex items-center gap-3">
+                  <TrendingUp className="w-5 h-5 text-indigo-500" /> {t.dashboard.profitability_chart}
+              </h3>
+              <div className="flex p-1 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                  <button 
+                    onClick={() => setSortMetric('profit')}
+                    className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sortMetric === 'profit' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                      Profit
+                  </button>
+                  <button 
+                    onClick={() => setSortMetric('margin')}
+                    className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sortMetric === 'margin' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                      Marge %
+                  </button>
+                  <button 
+                    onClick={() => setSortMetric('rotation')}
+                    className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sortMetric === 'rotation' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                      Vitesse
+                  </button>
+              </div>
+          </div>
           <div className="h-[450px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stats.profitabilityByItem} margin={{ top: 20, right: 30, left: 0, bottom: 40 }}>

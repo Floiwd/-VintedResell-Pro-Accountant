@@ -565,7 +565,7 @@ const Finances: React.FC<Props> = ({
             <thead className="bg-slate-50 dark:bg-slate-800 text-[9px] md:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
               <tr>
                 <th className="px-4 md:px-8 py-3 md:py-4">{t.common.date} & {t.common.description}</th>
-                <th className="px-4 md:px-8 py-3 md:py-4">{t.common.type} / Associé</th>
+                <th className="px-4 md:px-8 py-3 md:py-4">{t.common.type} / Vendu par</th>
                 <th className="px-4 md:px-8 py-3 md:py-4 text-right">{t.common.amount}</th>
               </tr>
             </thead>
@@ -672,7 +672,7 @@ const Finances: React.FC<Props> = ({
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] md:text-xs font-black text-slate-500 dark:text-slate-400 mb-1.5 md:mb-2 uppercase tracking-widest">Attribution</label>
+                  <label className="block text-[10px] md:text-xs font-black text-slate-500 dark:text-slate-400 mb-1.5 md:mb-2 uppercase tracking-widest">Vendu par</label>
                   <select name="memberId" className="w-full px-4 md:px-5 py-3 md:py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl md:rounded-2xl font-bold outline-none text-slate-900 dark:text-white text-sm md:text-base">
                     <option value="">Caisse Commune</option>
                     {activeMembers.map(m => (

@@ -50,9 +50,9 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Force-Structure" v10.0 - ResellPro
+// Scraper Vinted "Final-Fix" v11.0 - ResellPro
 (async () => {
-  console.log("🚀 Lancement du Scraper Force-Structure v10.0...");
+  console.log("🚀 Lancement du Scraper Final-Fix v11.0...");
   
   const statusEl = document.createElement('div');
   statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 10000; background: #6366f1; color: white; padding: 25px; border-radius: 20px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255,255,255,0.4); min-width: 280px; text-align: center; transition: all 0.4s ease;";
@@ -95,8 +95,12 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
         const priceMatch = content.match(priceRegex);
 
         if (priceMatch && content.length > 30) {
-          const priceVal = parseFloat(priceMatch[1].replace(',', '.'));
+          // FORCE NUMBER FORMAT (Dot instead of comma)
+          const priceRaw = priceMatch[1].replace(',', '.');
+          const priceVal = parseFloat(priceRaw);
           
+          if (isNaN(priceVal)) return;
+
           const textNodes = Array.from(container.querySelectorAll('span, p, div, h1, h2, h3, h4, a'))
             .map(t => t.innerText.trim())
             .filter(t => t.length > 8 && !t.includes('€') && !t.includes('\\n'));
@@ -105,12 +109,12 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
           const cleanTitles = textNodes.filter(t => !forbidden.some(key => t.toLowerCase().includes(key)) && t.length < 100);
 
           if (cleanTitles.length > 0) {
-            const title = cleanTitles.sort((a,b) => b.length - a.length)[0].replace(/["'\\x60]/g, '');
+            const title = cleanTitles.sort((a,b) => b.length - a.length)[0].replace(/["'\x60]/g, '');
             items.push({
               title: title,
               brand: title.split(' ')[0],
-              purchasePrice: isSalesPage ? 0 : priceVal,
-              salePrice: isSalesPage ? priceVal : Math.round(priceVal * 1.6),
+              purchasePrice: isSalesPage ? 0 : Number(priceVal.toFixed(2)),
+              salePrice: isSalesPage ? Number(priceVal.toFixed(2)) : Number((priceVal * 1.6).toFixed(2)),
               date: new Date().toISOString().split('T')[0],
               imageUrl: img.src,
               category: 'Vinted Import',
@@ -134,7 +138,7 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
     statusEl.innerHTML = "❌ AUCUN ARTICLE TROUVÉ";
   }
 
-  console.log("%cResellPro Scraper v10.0 Output:", "color: #6366f1; font-weight: bold; font-size: 16px;");
+  console.log("%cResellPro Scraper v11.0 Output:", "color: #6366f1; font-weight: bold; font-size: 16px;");
   console.log(JSON.stringify({ platform: 'VINTED', items: finalItems }, null, 2));
 
   setTimeout(() => {

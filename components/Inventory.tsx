@@ -104,6 +104,90 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
   const [lotPurchaseDate, setLotPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
   const [lotStatus, setLotStatus] = useState<ItemStatus>(ItemStatus.IN_STOCK);
   const [lotSubStatus, setLotSubStatus] = useState<ItemSubStatus>(ItemSubStatus.NONE);
+  const [showDraftRestore, setShowDraftRestore] = useState(false);
+
+  // Auto-save logic
+  useEffect(() => {
+    if (!isModalOpen) {
+      setShowDraftRestore(false);
+      return;
+    }
+
+    // Check if there's an existing draft for this specific item (or new item)
+    const draftKey = editingItem ? `vpro_draft_${editingItem.id}` : 'vpro_draft_new';
+    const savedDraft = localStorage.getItem(draftKey);
+    if (savedDraft) {
+      setShowDraftRestore(true);
+    }
+
+    const interval = setInterval(() => {
+      const draftData = {
+        name: draftName,
+        brand: draftBrand,
+        category: draftCategory,
+        size: draftSize,
+        condition: draftCondition,
+        quantity: draftQuantity,
+        minStockThreshold: draftMinStockThreshold,
+        purchasePrice: purchasePriceValue,
+        displaySalePrice: displaySalePriceValue,
+        salePrice: salePriceValue,
+        boostCost: boostCostValue,
+        isBoosted,
+        status: itemStatusInForm,
+        subStatus: subStatusInForm,
+        imageUrl,
+        purchaseDate,
+        receptionDate,
+        saleDate
+      };
+      localStorage.setItem(draftKey, JSON.stringify(draftData));
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [
+    isModalOpen, editingItem, draftName, draftBrand, draftCategory, draftSize, 
+    draftCondition, draftQuantity, draftMinStockThreshold, purchasePriceValue,
+    displaySalePriceValue, salePriceValue, boostCostValue, isBoosted, 
+    itemStatusInForm, subStatusInForm, imageUrl, purchaseDate, receptionDate, saleDate
+  ]);
+
+  const restoreDraft = () => {
+    const draftKey = editingItem ? `vpro_draft_${editingItem.id}` : 'vpro_draft_new';
+    const savedDraft = localStorage.getItem(draftKey);
+    if (savedDraft) {
+      try {
+        const d = JSON.parse(savedDraft);
+        setDraftName(d.name || '');
+        setDraftBrand(d.brand || '');
+        setDraftCategory(d.category || CATEGORIES[0]);
+        setDraftSize(d.size || '');
+        setDraftCondition(d.condition || ItemCondition.VERY_GOOD);
+        setDraftQuantity(d.quantity || '1');
+        setDraftMinStockThreshold(d.minStockThreshold || '0');
+        setPurchasePriceValue(d.purchasePrice || '');
+        setDisplaySalePriceValue(d.displaySalePrice || '');
+        setSalePriceValue(d.salePrice || '');
+        setBoostCostValue(d.boostCost || '');
+        setIsBoosted(!!d.isBoosted);
+        setItemStatusInForm(d.status || ItemStatus.IN_STOCK);
+        setSubStatusInForm(d.subStatus || ItemSubStatus.NONE);
+        setImageUrl(d.imageUrl || '');
+        setPurchaseDate(d.purchaseDate || new Date().toISOString().split('T')[0]);
+        setReceptionDate(d.receptionDate || '');
+        setSaleDate(d.saleDate || '');
+        setShowDraftRestore(false);
+      } catch (e) {
+        console.error("Failed to restore draft", e);
+      }
+    }
+  };
+
+  const clearDraft = () => {
+    const draftKey = editingItem ? `vpro_draft_${editingItem.id}` : 'vpro_draft_new';
+    localStorage.removeItem(draftKey);
+    setShowDraftRestore(false);
+  };
 
   // Génération automatique intelligente de l'ID suivant
   const generateNextId = (offset = 0) => {
@@ -304,6 +388,10 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
           imageUrl: imageUrl
       };
       if (editingItem) onUpdate(item); else onAdd(item);
+      
+      const draftKey = editingItem ? `vpro_draft_${editingItem.id}` : 'vpro_draft_new';
+      localStorage.removeItem(draftKey);
+      
       setIsModalOpen(false);
       resetForm();
   };
@@ -369,7 +457,13 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
         let count = 0;
         data.forEach((row: any) => {
           // Map common column names from Vinted, Excel, or VPro
-          const nameVal = getVal(row, ['title', 'titre', 'name', 'nom', 'article', 'description', 'titre article']).toString();
+          const nameVal = getVal(row, ['title', 'titre', 'name', 'nom', 'article', 'description', 'titre article']).toString().trim();
+          
+          if (!nameVal) {
+            console.warn("Skipping row: missing mandatory name field.");
+            return;
+          }
+
           let brand = getVal(row, ['brand', 'marque']).toString();
           const priceStr = getVal(row, ['price', 'prix', 'salePrice', 'prix_vente', 'vente', 'total', 'prix article']);
           const purchasePriceStr = getVal(row, ['purchasePrice', 'prix_achat', 'achat', 'cost']);
@@ -379,65 +473,64 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
           const date = getVal(row, ['date', 'date_achat', 'created_at', 'vendu_le', 'reception', 'date de vente']);
           const id = getVal(row, ['id', 'reference', 'ref', 'displayId']);
 
-          const pPrice = parseFloat(purchasePriceStr.toString().replace(',', '.') || "0");
-          const sPrice = parseFloat(priceStr.toString().replace(',', '.') || purchasePriceStr.toString().replace(',', '.') || "0");
+          const pPriceRaw = purchasePriceStr.toString().replace(',', '.').replace('€', '').trim();
+          const pPrice = parseFloat(pPriceRaw || "0");
+          const sPrice = parseFloat(priceStr.toString().replace(',', '.').replace('€', '').trim() || pPriceRaw || "0");
 
-          if (nameVal) {
-            // Extraction intelligente depuis le titre
-            let extractedId = id ? id.toString() : '';
-            
-            // 1. Extraction ID (#046)
-            if (!extractedId) {
-                const idMatch = nameVal.match(/#(\d+)/);
-                if (idMatch) extractedId = `#${idMatch[1]}`;
-            }
-
-            // 2. Extraction Taille si vide (W27 L30, W28L32, etc)
-            if (!size) {
-                const sizeMatch = nameVal.match(/[WL]\d{2}[ ]?[WL]?\d{2}|[WL]\d{2}/i);
-                if (sizeMatch) {
-                    size = sizeMatch[0].toUpperCase();
-                } else {
-                    // Cherche des tailles standards (S, M, L, XL, etc) avec des frontières de mots
-                    const stdSizeMatch = nameVal.match(/\b(XXS|XS|S|M|L|XL|XXL|XXXL)\b/i);
-                    if (stdSizeMatch) size = stdSizeMatch[0].toUpperCase();
-                }
-            }
-
-            // 3. Extraction Marque si vide
-            if (!brand) {
-                const commonBrands = ['Levi\'s', 'Levis', 'Nike', 'Carhartt', 'Adidas', 'Zara', 'Dickies', 'Ralph Lauren', 'Lacoste'];
-                for (const b of commonBrands) {
-                    if (nameVal.toLowerCase().includes(b.toLowerCase())) {
-                        brand = b;
-                        break;
-                    }
-                }
-            }
-
-            const item: InventoryItem = {
-              id: crypto.randomUUID(),
-              displayId: extractedId || generateNextId(count),
-              name: nameVal,
-              brand: brand,
-              category: category.toString(),
-              size: size,
-              condition: condition as ItemCondition,
-              status: ItemStatus.IN_STOCK,
-              subStatus: ItemSubStatus.NONE,
-              purchasePrice: isNaN(pPrice) ? 0 : pPrice,
-              displaySalePrice: isNaN(sPrice) ? 0 : sPrice,
-              salePrice: isNaN(sPrice) ? 0 : sPrice,
-              boostCost: 0,
-              purchaseDate: date ? new Date(date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-              receptionDate: date ? new Date(date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-              fees: 0,
-              shippingCost: 0,
-              imageUrl: ''
-            };
-            onAdd(item);
-            count++;
+          // Extraction intelligente depuis le titre si non renseigné
+          let extractedId = id ? id.toString() : '';
+          
+          // 1. Extraction ID (#046) si vide
+          if (!extractedId) {
+              const idMatch = nameVal.match(/#(\d+)/);
+              if (idMatch) extractedId = `#${idMatch[1]}`;
           }
+
+          // 2. Extraction Taille si vide (W27 L30, W28L32, etc)
+          if (!size) {
+              const sizeMatch = nameVal.match(/[WL]\d{2}[ ]?[WL]?\d{2}|[WL]\d{2}/i);
+              if (sizeMatch) {
+                  size = sizeMatch[0].toUpperCase();
+              } else {
+                  // Cherche des tailles standards (S, M, L, XL, etc) avec des frontières de mots
+                  const stdSizeMatch = nameVal.match(/\b(XXS|XS|S|M|L|XL|XXL|XXXL|[0-9]{2,3})\b/i);
+                  if (stdSizeMatch) size = stdSizeMatch[0].toUpperCase();
+              }
+          }
+
+          // 3. Extraction Marque si vide
+          if (!brand) {
+              const commonBrands = ['Levi\'s', 'Levis', 'Nike', 'Carhartt', 'Adidas', 'Zara', 'Dickies', 'Ralph Lauren', 'Lacoste', 'Stussy', 'Vans', 'Puma', 'Stone Island', 'Prada', 'Gucci'];
+              for (const b of commonBrands) {
+                  if (nameVal.toLowerCase().includes(b.toLowerCase())) {
+                      brand = b;
+                      break;
+                  }
+              }
+          }
+
+          const item: InventoryItem = {
+            id: crypto.randomUUID(),
+            displayId: extractedId || generateNextId(count),
+            name: nameVal,
+            brand: brand,
+            category: category.toString(),
+            size: size,
+            condition: condition as ItemCondition,
+            status: ItemStatus.IN_STOCK,
+            subStatus: ItemSubStatus.NONE,
+            purchasePrice: isNaN(pPrice) ? 0 : pPrice,
+            displaySalePrice: isNaN(sPrice) ? 0 : sPrice,
+            salePrice: isNaN(sPrice) ? 0 : sPrice,
+            boostCost: 0,
+            purchaseDate: date ? new Date(date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            receptionDate: date ? new Date(date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            fees: 0,
+            shippingCost: 0,
+            imageUrl: ''
+          };
+          onAdd(item);
+          count++;
         });
         alert(`${count} articles importés avec succès.`);
         setIsCsvModalOpen(false);
@@ -554,7 +647,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
 
                   <button onClick={() => setIsCsvModalOpen(true)} className="flex-1 md:flex-none justify-center p-3 md:p-4 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-[18px] md:rounded-[22px] border border-orange-100 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-all flex items-center gap-2">
                        <FileText className="w-4 h-4 md:w-5 md:h-5" />
-                       <span className="hidden md:inline text-xs font-black uppercase">Import CSV</span>
+                       <span className="hidden md:inline text-xs font-black uppercase">Importer depuis CSV</span>
                   </button>
 
                   <button onClick={handleExportCSV} title={t.inventory.export_csv} className="p-3 md:p-4 bg-slate-100 dark:bg-slate-800 rounded-[18px] md:rounded-[22px] text-slate-500 hover:bg-slate-200 transition-all"><Download className="w-4 h-4 md:w-5 md:h-5" /></button>
@@ -732,6 +825,18 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
 
                  <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden bg-[#0F172A]">
                      <div className="flex-1 overflow-y-auto p-5 md:p-12 space-y-6 md:space-y-10 custom-scrollbar">
+                         {showDraftRestore && (
+                           <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-3xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                             <div className="flex items-center gap-3 text-amber-500">
+                               <Sparkles className="w-5 h-5 animate-pulse" />
+                               <span className="text-xs font-black uppercase tracking-widest leading-none">Draft non sauvegardé détecté</span>
+                             </div>
+                             <div className="flex gap-2">
+                               <button type="button" onClick={clearDraft} className="px-3 py-1.5 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Ignorer</button>
+                               <button type="button" onClick={restoreDraft} className="px-4 py-1.5 bg-amber-500 text-black text-[10px] font-black uppercase rounded-xl hover:bg-amber-400 transition-all">Restaurer</button>
+                             </div>
+                           </div>
+                         )}
                          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                              <div className="md:col-span-1 flex flex-col items-center">
                                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 tracking-[0.2em] w-full text-center">{t.inventory.form.image}</label>
