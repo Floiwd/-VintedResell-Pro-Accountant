@@ -50,40 +50,55 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted Expert v6.0 - ResellPro
+// Scraper Vinted "Universal" v7.0 - ResellPro
 (async () => {
-  console.log("🚀 Lancement du Scraper Intelligent...");
+  console.log("🚀 Initialisation du Scraper Universal...");
   
   const statusEl = document.createElement('div');
-  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 9999; background: #6366f1; color: white; padding: 18px 28px; border-radius: 16px; font-family: sans-serif; font-weight: 800; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); border: 2px solid rgba(255,255,255,0.2); transition: all 0.3s ease;";
-  statusEl.innerText = "⏳ Chargement des données...";
+  statusEl.style = "position: fixed; top: 20px; right: 20px; z-index: 10000; background: #6366f1; color: white; padding: 20px; border-radius: 16px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid rgba(255,255,255,0.3); min-width: 250px;";
+  statusEl.innerHTML = "<div style='margin-bottom:10px'>🔄 Préparation...</div><div id='resellpro-progress' style='height:8px; background:rgba(255,255,255,0.2); border-radius:4px; overflow:hidden'><div id='resellpro-bar' style='height:100%; width:0%; background:#fff; transition:width 0.3s'></div></div>";
   document.body.appendChild(statusEl);
 
-  const isSalesPage = window.location.href.includes('type=sold');
-  console.log("📊 Mode détecté : " + (isSalesPage ? "VENTES" : "ACHATS"));
+  const updateStatus = (text, progress) => {
+    statusEl.querySelector('div').innerText = text;
+    if (progress !== undefined) statusEl.querySelector('#resellpro-bar').style.width = progress + "%";
+  };
 
+  // 1. S'assurer d'être sur l'onglet "Toutes"
+  const allTab = Array.from(document.querySelectorAll('button, a')).find(el => el.innerText.includes('Toutes'));
+  if (allTab && !allTab.parentElement.classList.contains('is-active') && !allTab.classList.contains('is-active')) {
+    updateStatus("Clic sur l'onglet 'Toutes'...", 10);
+    allTab.click();
+    await new Promise(r => setTimeout(r, 1500));
+  }
+
+  const isSalesPage = window.location.href.includes('type=sold');
+  updateStatus("🔍 Mode : " + (isSalesPage ? "VENTES" : "ACHATS"), 20);
+
+  // 2. Scroll intelligent et progressif
   const smartScroll = async () => {
-    const totalHeight = document.body.scrollHeight;
-    let currentHeight = 0;
-    while (currentHeight < totalHeight) {
-      window.scrollBy(0, 600);
-      currentHeight += 600;
-      statusEl.innerText = "⏳ Scroll : " + Math.round((currentHeight/totalHeight)*100) + "%";
-      await new Promise(r => setTimeout(r, 200));
+    let currentPos = 0;
+    while (currentPos < document.body.scrollHeight) {
+      window.scrollBy(0, 500);
+      currentPos += 500;
+      let progress = 20 + Math.min(40, (currentPos / (document.body.scrollHeight || 1)) * 40);
+      updateStatus("⏳ Scroll : " + Math.round(progress) + "%", progress);
+      await new Promise(r => setTimeout(r, 150));
     }
     window.scrollTo(0, 0);
     await new Promise(r => setTimeout(r, 500));
   };
 
   await smartScroll();
-  statusEl.innerText = "🔍 Extraction des articles...";
+  updateStatus("🕵️ Analyse profonde...", 70);
 
   const items = [];
   const priceRegex = /(\\d+[,.]\\d{2})\\s*€/;
   
-  const blocks = document.querySelectorAll('.u-flexbox.u-flex-direction-column, .item-card, .transaction-list-item, .cell__content, div[class*="item"]');
+  // 3. Extraction par containers (plus robuste)
+  const containers = document.querySelectorAll('.u-flexbox.u-flex-direction-column, .item-card, .transaction-list-item, .cell__content, div[class*="item"]');
   
-  blocks.forEach(block => {
+  containers.forEach((block, idx) => {
     try {
       const text = block.innerText;
       const priceMatch = text.match(priceRegex);
@@ -93,11 +108,11 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
         
         const elements = Array.from(block.querySelectorAll('span, p, div, h1, h2, h3, h4'))
           .map(el => el.innerText.trim())
-          .filter(t => t.length > 5 && !t.includes('€'));
+          .filter(t => t.length > 8 && !t.includes('€'));
 
         const forbidden = ['commande', 'finalisée', 'évaluée', 'validé', 'remboursement', 'effectué', 'acheteur', 'vendeur', 'vendu', 'annulée', 'suivre'];
         const titleCandidates = elements.filter(t => 
-           !forbidden.some(key => t.toLowerCase().includes(key)) && t.length < 100
+           !forbidden.some(key => t.toLowerCase().includes(key)) && t.length < 120
         );
 
         const title = titleCandidates.sort((a,b) => b.length - a.length)[0];
@@ -121,15 +136,15 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const finalItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title))===i);
   
+  updateStatus("✅ " + finalItems.length + " articles !", 100);
   statusEl.style.background = "#10b981";
-  statusEl.innerText = "✅ " + finalItems.length + " articles récupérés !";
-  
-  console.log("📦 COPIEZ LE BLOC JSON CI-DESSOUS :");
+
+  console.log("📦 DONNÉES EXTRAITES :");
   console.log(JSON.stringify({ platform: 'VINTED', items: finalItems }, null, 2));
 
   setTimeout(() => {
     document.body.removeChild(statusEl);
-    alert("EXTRACTION TERMINÉE !\\n\\n" + finalItems.length + " articles détectés (" + (isSalesPage ? "Ventes" : "Achats") + ").\\n\\n1. Ouvrez la console (F12)\\n2. Copiez l'objet JSON { platform: 'VINTED', ... }");
+    alert("EXTRACTION TERMINÉE !\\n\\n" + finalItems.length + " articles récupérés (" + (isSalesPage ? "Ventes" : "Achats") + ").\\n\\n1. Ouvrez la console (F12)\\n2. Copiez l'objet JSON { platform: 'VINTED', ... }");
   }, 2000);
 })();
     `;
