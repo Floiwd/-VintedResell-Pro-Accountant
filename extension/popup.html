@@ -1,66 +1,20 @@
-<!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    body {
-      width: 300px;
-      padding: 20px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: #0f172a;
-      color: white;
-    }
-    h2 {
-      font-size: 18px;
-      margin-top: 0;
-      color: #6366f1;
-    }
-    p {
-      font-size: 12px;
-      color: #94a3b8;
-    }
-    button {
-      width: 100%;
-      padding: 12px;
-      background: #6366f1;
-      color: white;
-      border: none;
-      border-radius: 12px;
-      font-weight: 800;
-      cursor: pointer;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    button:hover {
-      background: #4f46e5;
-    }
-    #result {
-      margin-top: 20px;
-      background: #1e293b;
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 10px;
-      font-family: monospace;
-      max-height: 200px;
-      overflow: auto;
-      display: none;
-    }
-    .copy-btn {
-      margin-top: 10px;
-      background: #334155;
-      display: none;
-    }
-  </style>
-</head>
-<body>
-  <h2>ResellPro Sync</h2>
-  <p>Ouvrez votre liste de transactions Vinted puis cliquez sur le bouton ci-dessous.</p>
-  
-  <button id="scrapeBtn">Extraire les données</button>
-  
-  <div id="result"></div>
-  <button id="copyBtn" class="copy-btn">Copier le résultat</button>
-
+<body style="width: 340px; padding: 0; font-family: -apple-system, sans-serif; background: #0f172a; color: white;">
+  <div style="background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); padding: 30px; border-bottom: 1px solid #334155; text-align: center; border-top: 4px solid #6366f1;">
+    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 3.5px; color: #818cf8; font-weight: 900; margin-bottom: 8px;">GHOST ENGINE ELITE</div>
+    <h2 style="font-size: 26px; font-weight: 900; margin: 0; italic; letter-spacing: -1px;">RESELLPRO<span style="color: #6366f1;">.PRO</span></h2>
+    <div style="font-[7px]; color: #475569; margin-top: 10px; font-weight: 800;">STAY STEALTHY. SELL FASTER.</div>
+  </div>
+  <div style="padding: 30px;">
+    <button id="scrapeBtn" style="width: 100%; padding: 18px; background: #6366f1; color: white; border: none; border-radius: 18px; font-weight: 900; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 15px 30px rgba(99, 102, 241, 0.3); border: 1px solid rgba(255,255,255,0.1);">
+      START STEALTH SYNC v21.0
+    </button>
+    <div id="result" style="margin-top: 25px; font-size: 13px; display: none; background: #1e293b; padding: 20px; border-radius: 18px; border: 1px solid #334155; line-height: 1.6; text-align: center; border-left: 4px solid #10b981;"></div>
+    <button id="copyBtn" style="width: 100%; padding: 16px; background: #10b981; color: white; border: none; border-radius: 16px; margin-top: 20px; display: none; font-weight: 900; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1);">
+      COPY TO POWER HUB
+    </button>
+    <div style="margin-top: 25px; text-align: center; opacity: 0.3; font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">Secured by Anti-Ban Matrix v2.4</div>
+  </div>
   <script src="popup.js"></script>
 </body>
 </html>

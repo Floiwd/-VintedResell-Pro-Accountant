@@ -697,28 +697,30 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                                           <span className="text-[8px] bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 rounded-md border border-slate-100 dark:border-slate-800 font-black text-slate-400">{item.size || 'TU'}</span>
                                       </div>
                                       {item.status === ItemStatus.IN_STOCK && (
-                                          <div className="text-[7.5px] font-black text-indigo-500 uppercase tracking-tighter italic">
-                                              Potentiel : {(() => {
-                                                  const catalogItems = (catalog || []).filter(c => 
-                                                      c.brand.toLowerCase() === item.brand.toLowerCase() && 
-                                                      c.category.toLowerCase() === item.category.toLowerCase() &&
-                                                      c.avgPrice !== undefined
-                                                  );
-                                                  if (catalogItems.length > 0) {
-                                                      const avg = catalogItems.reduce((acc, curr) => acc + (curr.avgPrice || 0), 0) / catalogItems.length;
-                                                      return Math.round(avg);
-                                                  }
-                                                  // Fallback: search by brand only
-                                                  const brandItems = (catalog || []).filter(c => 
-                                                      c.brand.toLowerCase() === item.brand.toLowerCase() &&
-                                                      c.avgPrice !== undefined
-                                                  );
-                                                  if (brandItems.length > 0) {
-                                                      const avg = brandItems.reduce((acc, curr) => acc + (curr.avgPrice || 0), 0) / brandItems.length;
-                                                      return Math.round(avg);
-                                                  }
-                                                  return Math.round(item.salePrice * 1.1); // Reasonable estimation
-                                              })()}€
+                                          <div className="mt-1">
+                                              <span className="text-[7px] font-black bg-indigo-50 dark:bg-indigo-900/40 text-indigo-500 uppercase px-1.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800/50 inline-flex items-center gap-0.5">
+                                                  <Sparkles className="w-2 h-2" />
+                                                  Potentiel : {(() => {
+                                                      const catalogItems = (catalog || []).filter(c => 
+                                                          c.brand.toLowerCase() === item.brand.toLowerCase() && 
+                                                          c.category.toLowerCase() === item.category.toLowerCase() &&
+                                                          (c as any).avgPrice !== undefined
+                                                      );
+                                                      if (catalogItems.length > 0) {
+                                                          const avg = catalogItems.reduce((acc, curr) => acc + ((curr as any).avgPrice || 0), 0) / catalogItems.length;
+                                                          return Math.round(avg);
+                                                      }
+                                                      const brandItems = (catalog || []).filter(c => 
+                                                          c.brand.toLowerCase() === item.brand.toLowerCase() &&
+                                                          (c as any).avgPrice !== undefined
+                                                      );
+                                                      if (brandItems.length > 0) {
+                                                          const avg = brandItems.reduce((acc, curr) => acc + ((curr as any).avgPrice || 0), 0) / brandItems.length;
+                                                          return Math.round(avg);
+                                                      }
+                                                      return Math.round(item.salePrice * 1.1);
+                                                  })()}€
+                                              </span>
                                           </div>
                                       )}
                                   </div>

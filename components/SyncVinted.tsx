@@ -54,6 +54,32 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
   const [syncData, setSyncData] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [uploadFeedback, setUploadFeedback] = useState<string | null>(null);
+
+  const handleUploadZip = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      setIsProcessing(true);
+      const zip = await JSZip.loadAsync(file);
+      const manifestFile = zip.file("manifest.json");
+      if (!manifestFile) throw new Error("Fichier manifest.json introuvable dans l'archive. Assurez-vous d'avoir téléchargé l'extension ResellPro officielle.");
+      
+      const manifestText = await manifestFile.async("string");
+      const manifest = JSON.parse(manifestText);
+      
+      setUploadFeedback(`Extension ${manifest.name} v${manifest.version} vérifiée et prête !`);
+      setTimeout(() => setUploadFeedback(null), 5000);
+      
+      alert(`Extension v${manifest.version} détectée.\n\nInstallation : Suivez le guide pour charger le dossier décompressé.`);
+    } catch (err) {
+      alert("Erreur : " + (err instanceof Error ? err.message : "Fichier invalide"));
+    } finally {
+      setIsProcessing(false);
+      event.target.value = '';
+    }
+  };
 
   const handleAddAccount = () => {
     if (!newAccount.nickname) return;
@@ -72,20 +98,18 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Ghost-Sync" v19.0 - Ultra Precision
+// Scraper Vinted "Ghost-Sync" v21.0 - Ultra Precision
 (async () => {
-  console.log("%c🚀 Lancement du Scraper Ghost-Sync v19.0 - Ultra Precision", "color: #6366f1; font-weight: bold; font-size: 14px;");
+  console.log("%c🚀 Lancement du Scraper Ghost-Sync v21.0 - Ultra Precision", "color: #6366f1; font-weight: bold; font-size: 14px;");
   
   const statusEl = document.createElement('div');
-  const style = "position: fixed; top: 20px; right: 20px; z-index: 2147483647; background: #0f172a; color: white; padding: 25px; border-radius: 24px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid #6366f1; min-width: 320px; text-align: center; transition: all 0.4s ease;";
+  const style = "position: fixed; bottom: 20px; right: 20px; z-index: 2147483647; background: #0f172a; color: white; padding: 25px; border-radius: 24px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid #6366f1; min-width: 320px; text-align: center; transition: all 0.4s ease;";
   statusEl.style.cssText = style;
-  statusEl.innerHTML = \`
-    <div style="margin-bottom: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #818cf8;">Sécurité Vinted : Maximale</div>
-    <div id="sync-progress" style="font-size: 16px; margin-bottom: 10px;">Initialisation...</div>
-    <div style="width: 100%; background: #1e293b; height: 6px; border-radius: 3px; overflow: hidden;">
-      <div id="sync-bar" style="width: 0%; height: 100%; background: #6366f1; transition: width 0.3s ease;"></div>
-    </div>
-  \`;
+  statusEl.innerHTML = '<div style="margin-bottom: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #818cf8;">Sécurité Vinted : Maximale (v21.0)</div>' +
+                       '<div id="sync-progress" style="font-size: 16px; margin-bottom: 10px;">Analyse furtive...</div>' +
+                       '<div style="width: 100%; background: #1e293b; height: 6px; border-radius: 3px; overflow: hidden;">' +
+                       '<div id="sync-bar" style="width: 0%; height: 100%; background: #6366f1; transition: width 0.3s ease;"></div>' +
+                       '</div>';
   document.body.appendChild(statusEl);
 
   const wait = (min, max) => new Promise(res => setTimeout(res, Math.floor(Math.random() * (max - min + 1) + min)));
@@ -93,26 +117,37 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
   const stealthScroll = async () => {
     let lastHeight = document.body.scrollHeight;
     let stationary = 0;
-    while (stationary < 7) {
-      window.scrollBy({ top: Math.random() * 1000 + 500, behavior: 'smooth' });
-      await wait(800, 1500);
-      let newHeight = document.body.scrollHeight;
-      if (newHeight === lastHeight) stationary++;
-      else {
+    let currentScroll = 0;
+    
+    // Safety break at 40k pixels to prevent infinite loops
+    while (stationary < 10 && currentScroll < 40000) {
+      const jump = Math.floor(Math.random() * 800) + 400; // Human-like scroll jumps
+      currentScroll += jump;
+      window.scrollTo({ top: currentScroll, behavior: 'smooth' });
+      
+      const jitter = Math.floor(Math.random() * 500) - 250;
+      await wait(800 + jitter, 1500 + jitter);
+      
+      const newHeight = document.body.scrollHeight;
+      if (newHeight === lastHeight && currentScroll >= newHeight - window.innerHeight) {
+        stationary++;
+      } else {
         stationary = 0;
         lastHeight = newHeight;
       }
-      const progress = Math.min(95, Math.round((window.scrollY / Math.max(lastHeight, 1)) * 100));
-      document.getElementById('sync-progress').innerText = "Analyse furtive... " + progress + "%";
-      document.getElementById('sync-bar').style.width = progress + "%";
-      if (window.scrollY > 30000) break;
+      
+      const progress = Math.min(98, Math.round((currentScroll / Math.max(lastHeight, 1)) * 100));
+      const syncProgressEl = document.getElementById('sync-progress');
+      const syncBarEl = document.getElementById('sync-bar');
+      if (syncProgressEl) syncProgressEl.innerText = "Synchronisation furtive... " + progress + "% (" + stationary + "/10)";
+      if (syncBarEl) syncBarEl.style.width = progress + "%";
     }
   };
 
   await stealthScroll();
-  await wait(1000, 2000);
+  await wait(1200, 2200);
   
-  const isSalesPage = /sold|transactions|mes_ventes|order|purchase|achats/.test(window.location.href);
+  const isSalesPage = /sold|transactions|mes_ventes|orders|purchase|achats|sales/.test(window.location.href);
   const items = [];
   
   const extract = () => {
@@ -126,11 +161,13 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
       '.purchase-item',
       '.order-list-item',
       '.t-item-box',
+      '.web_ui__Cell__cell',
       'article'
     ];
 
-    const containers = document.querySelectorAll(selectors.join(','));
-    document.getElementById('sync-progress').innerText = "Extraction : " + containers.length + " trouvés";
+    const containers = document.querySelectorAll(selectors.join(', '));
+    const progressEl = document.getElementById('sync-progress');
+    if (progressEl) progressEl.innerText = "Extraction : " + containers.length + " articles identifiés";
 
     containers.forEach(el => {
       try {
@@ -154,7 +191,7 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
           const brandCandidate = lines.find(l => l !== titleCandidate && l.length > 2) || "";
           
           const lowerText = text.toLowerCase();
-          const isSold = lowerText.includes("vendu") || lowerText.includes("sold") || lowerText.includes("terminé") || lowerText.includes("finalis") || lowerText.includes("verkocht") || lowerText.includes("venduto");
+          const isSold = /vendu|sold|terminé|finalisé|verkocht|venduto/.test(lowerText);
           const status = (isSalesPage || isSold) ? "SOLD" : "IN_STOCK";
           
           items.push({ 
@@ -179,12 +216,12 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   if (finalItems.length > 0) {
     statusEl.style.background = "#10b981";
-    document.getElementById('sync-bar').style.width = "100%";
-    statusEl.innerHTML = \`
-      <div style="font-size: 20px; margin-bottom: 10px;">✅ EXTRACTION v19.0 OK</div>
-      <div style="font-size: 12px; margin-bottom: 15px;">\${finalItems.length} articles identifiés</div>
-      <button id="copy-vpro-btn" style="background: white; color: #10b981; border: none; padding: 12px; border-radius: 12px; font-weight: 900; cursor: pointer; width: 100%;">COPIER POUR LE HUB</button>
-    \`;
+    const syncBarEl = document.getElementById('sync-bar');
+    if (syncBarEl) syncBarEl.style.width = "100%";
+    statusEl.innerHTML = '<div style="font-size: 20px; margin-bottom: 10px;">✅ EXTRACTION v21.0 OK</div>' +
+                         '<div style="font-size: 12px; margin-bottom: 15px;">\${finalItems.length} articles synchronisés</div>' +
+                         '<button id="copy-vpro-btn" style="background: white; color: #10b981; border: none; padding: 12px; border-radius: 12px; font-weight: 900; cursor: pointer; width: 100%;">COPIER POUR LE HUB</button>';
+    
     document.getElementById('copy-vpro-btn').onclick = async () => {
       await navigator.clipboard.writeText(jsonOutput);
       document.getElementById('copy-vpro-btn').innerText = "COPIÉ !";
@@ -192,11 +229,11 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
     };
   } else {
     statusEl.style.background = "#f43f5e";
-    statusEl.innerHTML = "❌ AUCUN ARTICLE TROUVÉ<br><span style='font-size: 10px'>Scrollez un peu ou changez de page.</span>";
-    setTimeout(() => statusEl.remove(), 6000);
-  }
-})();
-    `;
+      statusEl.innerHTML = "❌ AUCUN ARTICLE TROUVÉ<br><span style='font-size: 10px'>Scrollez ou vérifiez votre connexion.</span>";
+      setTimeout(() => statusEl.remove(), 6000);
+    }
+  })();
+      `;
     navigator.clipboard.writeText(script);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -229,7 +266,7 @@ Le dossier doit contenir exactement :
     const manifest = {
       manifest_version: 3,
       name: "ResellPro Stealth Sync",
-      version: "20.0.0",
+      version: "21.0.0",
       description: "Synchronisation automatique et sécurisée pour Vinted ResellPro",
       permissions: ["activeTab", "scripting"],
       action: {
@@ -242,11 +279,11 @@ Le dossier doit contenir exactement :
     };
 
     const contentJs = `
-const SYNC_CONFIG = { MIN_DELAY: 600, MAX_DELAY: 1400, VERSION: '20.0 Ghost' };
+const SYNC_CONFIG = { MIN_DELAY: 800, MAX_DELAY: 1800, VERSION: '21.0 Stealth' };
 const wait = (ms) => new Promise(res => setTimeout(res, ms));
 
 async function stealthScroll() {
-  const overlay = createStatusOverlay("SCANNING VINTED DATABASE v20.0...");
+  const overlay = createStatusOverlay("ENGINE GHOST v21.0 INITIALIZED...");
   let currentPos = 0;
   let lastHeight = document.body.scrollHeight;
   let stationaryCount = 0;
@@ -254,39 +291,48 @@ async function stealthScroll() {
 
   const stopBtn = document.createElement('button');
   stopBtn.innerText = "FINISH NOW";
-  stopBtn.style.cssText = "margin-top: 15px; background: #374151; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer;";
+  stopBtn.style.cssText = "margin-top: 15px; background: #6366f1; color: white; border: none; padding: 10px 15px; border-radius: 12px; font-size: 11px; font-weight: 900; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.3);";
+  stopBtn.onmouseover = () => { stopBtn.style.transform = "scale(1.05)"; };
+  stopBtn.onmouseout = () => { stopBtn.style.transform = "scale(1)"; };
   stopBtn.onclick = () => { forceStop = true; };
   overlay.appendChild(stopBtn);
 
-  window.scrollTo({ top: 500, behavior: 'smooth' });
-  await wait(800);
+  // Smooth start nudge
+  window.scrollTo({ top: 400, behavior: 'smooth' });
+  await wait(1000);
 
-  while (stationaryCount < 12 && !forceStop) { 
-    const scrollStep = Math.floor(Math.random() * 800) + 500;
+  // Main stealth scroll loop
+  while (stationaryCount < 10 && !forceStop) { 
+    // Human-like scroll jumps with jitter
+    const scrollStep = Math.floor(Math.random() * 900) + 400;
     currentPos += scrollStep;
     window.scrollTo({ top: currentPos, behavior: 'smooth' });
     
-    await wait(Math.floor(Math.random() * (SYNC_CONFIG.MAX_DELAY - SYNC_CONFIG.MIN_DELAY)) + SYNC_CONFIG.MIN_DELAY);
+    // Dynamic randomized delay
+    const delay = Math.floor(Math.random() * (SYNC_CONFIG.MAX_DELAY - SYNC_CONFIG.MIN_DELAY)) + SYNC_CONFIG.MIN_DELAY;
+    await wait(delay);
     
     const newHeight = document.body.scrollHeight;
     const progress = Math.min(99, Math.round((currentPos / Math.max(newHeight, currentPos + 1)) * 100));
-    updateOverlayProgress(overlay, progress);
+    updateOverlayProgress(overlay, progress, stationaryCount);
 
-    if (newHeight <= lastHeight && currentPos >= newHeight - 300) {
+    // Better page bottom detection
+    if (newHeight <= lastHeight && currentPos >= newHeight - window.innerHeight - 100) {
       stationaryCount++;
     } else {
       stationaryCount = 0;
       lastHeight = newHeight;
     }
     
+    // Hard safety limit
     if (currentPos > 60000) break;
   }
   
-  updateOverlayProgress(overlay, 100);
+  updateOverlayProgress(overlay, 100, 10);
   const statusTxt = document.getElementById("rp-status-text");
-  if (statusTxt) statusTxt.innerHTML = '<span style="color: #10b981;">SYNC OK</span>';
+  if (statusTxt) statusTxt.innerHTML = '<span style="color: #10b981; font-weight: 900;">SYNC COMPLETED</span>';
   if (stopBtn) stopBtn.remove();
-  await wait(800);
+  await wait(1200);
   overlay.remove();
   return scrapeData();
 }
@@ -294,18 +340,21 @@ async function stealthScroll() {
 function createStatusOverlay(text) {
   const div = document.createElement('div');
   div.id = "rp-overlay";
-  div.style.cssText = "position: fixed; top: 20px; right: 20px; z-index: 2147483647; background: #0f172a; color: white; padding: 25px; border-radius: 20px; font-family: sans-serif; box-shadow: 0 20px 40px rgba(0,0,0,0.5); border: 2px solid #6366f1; min-width: 280px; text-align: center;";
-  div.innerHTML = '<div style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #818cf8; margin-bottom: 10px; font-weight: 800;">ResellPro Stealth Engine</div>' +
-                  '<div id="rp-status-text" style="font-weight: 900; margin-bottom: 15px;">' + text + '</div>' +
-                  '<div style="width: 100%; background: #1e293b; height: 8px; border-radius: 4px; overflow: hidden;">' +
-                  '<div id="rp-progress-bar" style="width: 0%; height: 100%; background: #6366f1; transition: width 0.3s ease;"></div></div>';
+  div.style.cssText = "position: fixed; bottom: 25px; right: 25px; z-index: 2147483647; background: #0f172a; color: white; padding: 30px; border-radius: 28px; font-family: sans-serif; box-shadow: 0 30px 60px rgba(0,0,0,0.6); border: 2px solid #6366f1; min-width: 300px; text-align: center; border-left: 8px solid #6366f1;";
+  div.innerHTML = '<div style="font-size: 10px; text-transform: uppercase; letter-spacing: 3px; color: #818cf8; margin-bottom: 12px; font-weight: 800;">ResellPro Stealth v21.0</div>' +
+                  '<div id="rp-status-text" style="font-weight: 900; margin-bottom: 20px; font-size: 15px; font-style: italic;">' + text + '</div>' +
+                  '<div style="width: 100%; background: #1e293b; height: 10px; border-radius: 5px; overflow: hidden;">' +
+                  '<div id="rp-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #6366f1, #818cf8); transition: width 0.4s ease;"></div></div>' +
+                  '<div id="rp-sub-status" style="font-[7px]; text-transform: uppercase; color: #475569; margin-top: 10px; font-weight: 800;">Waiting for engine...</div>';
   document.body.appendChild(div);
   return div;
 }
 
-function updateOverlayProgress(overlay, progress) {
+function updateOverlayProgress(overlay, progress, stage) {
   const bar = overlay.querySelector("#rp-progress-bar");
+  const sub = overlay.querySelector("#rp-sub-status");
   if (bar) bar.style.width = progress + "%";
+  if (sub) sub.innerText = "Analyzing Sector " + progress + "% | Probe " + (stage + 1) + "/10";
 }
 
 function scrapeData() {
@@ -320,6 +369,7 @@ function scrapeData() {
     '.purchase-item',
     '.order-list-item',
     '.t-item-box',
+    '.web_ui__Cell__cell',
     'article'
   ];
   
@@ -339,8 +389,8 @@ function scrapeData() {
             const lower = l.toLowerCase();
             return l.length > 2 && 
                    !l.includes("€") && !l.includes("£") && !l.includes("$") && 
-                   !/\\d+ (vues|views|vistas|visualizações)/i.test(l) &&
-                   !/favoris|favori|likes|likes|favori/i.test(lower) && 
+                   !/\\d+ (vues|views|vistas)/i.test(l) &&
+                   !/favoris|favori|likes|like/i.test(lower) && 
                    !/vendu|sold|finalis|termin|verkocht|venduto|éditer|modifier/i.test(lower);
           });
         
@@ -348,7 +398,7 @@ function scrapeData() {
         const brandCandidate = lines.find(l => l !== titleCandidate && l.length > 2) || "";
         
         const lowerText = text.toLowerCase();
-        const isSold = lowerText.includes("vendu") || lowerText.includes("sold") || lowerText.includes("finalis") || lowerText.includes("termin") || lowerText.includes("verkocht") || lowerText.includes("venduto");
+        const isSold = /vendu|sold|finalis|termin|verkocht|venduto/.test(lowerText);
         const status = (isSalesPage || isSold) ? "SOLD" : "IN_STOCK";
         
         items.push({ 
@@ -381,19 +431,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     const popupHtml = `
 <html>
-<body style="width: 320px; padding: 0; font-family: sans-serif; background: #0f172a; color: white;">
-  <div style="background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); padding: 25px; border-bottom: 1px solid #334155; text-align: center;">
-    <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 3px; color: #818cf8; font-weight: 800; margin-bottom: 5px;">GHOST ENGINE PRO</div>
-    <h2 style="font-size: 22px; font-weight: 900; margin: 0; italic;">RESELLPRO<span style="color: #6366f1;">.PRO</span></h2>
+<body style="width: 340px; padding: 0; font-family: -apple-system, sans-serif; background: #0f172a; color: white;">
+  <div style="background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); padding: 30px; border-bottom: 1px solid #334155; text-align: center; border-top: 4px solid #6366f1;">
+    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 3.5px; color: #818cf8; font-weight: 900; margin-bottom: 8px;">GHOST ENGINE ELITE</div>
+    <h2 style="font-size: 26px; font-weight: 900; margin: 0; italic; letter-spacing: -1px;">RESELLPRO<span style="color: #6366f1;">.PRO</span></h2>
+    <div style="font-[7px]; color: #475569; margin-top: 10px; font-weight: 800;">STAY STEALTHY. SELL FASTER.</div>
   </div>
-  <div style="padding: 25px;">
-    <button id="scrapeBtn" style="width: 100%; padding: 16px; background: #6366f1; color: white; border: none; border-radius: 16px; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.4);">
-      START STEALTH SYNC
+  <div style="padding: 30px;">
+    <button id="scrapeBtn" style="width: 100%; padding: 18px; background: #6366f1; color: white; border: none; border-radius: 18px; font-weight: 900; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 15px 30px rgba(99, 102, 241, 0.3); border: 1px solid rgba(255,255,255,0.1);">
+      START STEALTH SYNC v21.0
     </button>
-    <div id="result" style="margin-top: 20px; font-size: 12px; display: none; background: #1e293b; padding: 15px; border-radius: 14px; border: 1px solid #334155; line-height: 1.5; text-align: center;"></div>
-    <button id="copyBtn" style="width: 100%; padding: 14px; background: #10b981; color: white; border: none; border-radius: 14px; margin-top: 15px; display: none; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; cursor: pointer;">
-      COPY DATA TO HUB
+    <div id="result" style="margin-top: 25px; font-size: 13px; display: none; background: #1e293b; padding: 20px; border-radius: 18px; border: 1px solid #334155; line-height: 1.6; text-align: center; border-left: 4px solid #10b981;"></div>
+    <button id="copyBtn" style="width: 100%; padding: 16px; background: #10b981; color: white; border: none; border-radius: 16px; margin-top: 20px; display: none; font-weight: 900; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1);">
+      COPY TO POWER HUB
     </button>
+    <div style="margin-top: 25px; text-align: center; opacity: 0.3; font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">Secured by Anti-Ban Matrix v2.4</div>
   </div>
   <script src="popup.js"></script>
 </body>
@@ -404,33 +456,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 document.getElementById('scrapeBtn').onclick = async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab || !tab.url || !tab.url.includes('vinted')) { 
-    alert('Please open Vinted page (Profile or Transactions)'); return; 
+    alert('Invalid Context: Open Vinted Profile or Sales page to begin sync.'); return; 
   }
   
   const btn = document.getElementById('scrapeBtn');
   const resultDiv = document.getElementById('result');
   const copyBtn = document.getElementById('copyBtn');
   
-  btn.innerText = "SYNCING v20.0...";
+  btn.innerText = "INITIALIZING v21.0...";
   btn.disabled = true;
   btn.style.opacity = '0.5';
+  btn.style.transform = "scale(0.98)";
 
   chrome.tabs.sendMessage(tab.id, { action: "START_SYNC" }, (response) => {
     btn.innerText = "START STEALTH SYNC";
     btn.disabled = false;
     btn.style.opacity = '1';
+    btn.style.transform = "scale(1)";
     
     if (response && response.success && response.data) {
       const count = response.data.items.length;
-      resultDiv.innerHTML = '<div style="color: #10b981; font-weight: 900; margin-bottom: 8px;">EXTRACTION v20.0 OK</div>' + count + ' articles identifiés.';
+      resultDiv.innerHTML = '<div style="color: #10b981; font-weight: 900; margin-bottom: 8px; font-size: 14px;">SYNC SUCCESS</div>' + 
+                           '<span style="opacity: 0.7">' + count + ' articles identified in current sector.</span>';
       resultDiv.style.display = 'block';
       copyBtn.style.display = 'block';
       copyBtn.onclick = () => {
         navigator.clipboard.writeText(JSON.stringify(response.data, null, 2));
-        alert("Success ! Données copiées. Collez-les maintenant dans le Power Hub.");
+        copyBtn.innerText = "COPIED TO CLIPBOARD!";
+        setTimeout(() => { copyBtn.innerText = "COPY TO POWER HUB"; }, 3000);
       };
     } else {
-      alert("Error: " + (response ? response.error : "No response from script. Refresh Vinted and try again."));
+      const errorMsg = response ? (response.error || "Unknown response error") : "Connection lost with content script. Refresh Vinted and retry.";
+      alert("STEALTH FAILURE: " + errorMsg);
+      btn.innerText = "RETRY SYNC";
     }
   });
 };
@@ -1020,6 +1078,27 @@ document.getElementById('scrapeBtn').onclick = async () => {
                           <button onClick={handleDownloadExtension} className="flex items-center gap-2 text-white bg-slate-900 dark:bg-white dark:text-slate-900 font-black uppercase text-[10px] tracking-widest px-6 py-3 rounded-2xl hover:scale-105 transition-all">
                             <Download className="w-4 h-4" /> Télécharger (Beta)
                           </button>
+                        </div>
+                     </div>
+
+                     {/* Upload Check Feature */}
+                     <div className="flex gap-6">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0 text-xl font-black text-amber-600 italic">UP</div>
+                        <div>
+                          <h4 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">Vérifier une Archive ZIP</h4>
+                          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-4">
+                            Déjà téléchargé ? Téléversez votre ZIP pour vérifier l'intégrité de votre extension.
+                          </p>
+                          <label className="flex items-center gap-2 text-amber-600 bg-amber-50 dark:bg-amber-500/10 font-black uppercase text-[10px] tracking-widest px-6 py-3 rounded-2xl cursor-pointer hover:bg-amber-100 transition-all border-2 border-dashed border-amber-200">
+                             <Plus className="w-4 h-4" /> 
+                             {isProcessing ? 'Vérification...' : 'Importer ResellPro_Extension.zip'}
+                             <input type="file" accept=".zip" onChange={handleUploadZip} className="hidden" disabled={isProcessing} />
+                          </label>
+                          {uploadFeedback && (
+                            <div className="mt-3 text-[10px] font-black text-emerald-500 flex items-center gap-2">
+                              <Check className="w-3 h-3" /> {uploadFeedback}
+                            </div>
+                          )}
                         </div>
                      </div>
 
