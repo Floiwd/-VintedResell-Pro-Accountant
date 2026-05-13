@@ -72,9 +72,9 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Ghost-Sync" v17.0 - Ultra Alpha
+// Scraper Vinted "Ghost-Sync" v18.0 - Ultra Precision
 (async () => {
-  console.log("%c🚀 Lancement du Scraper Ghost-Sync v17.0 - Ultra Robust", "color: #6366f1; font-weight: bold; font-size: 14px;");
+  console.log("%c🚀 Lancement du Scraper Ghost-Sync v18.0 - Ultra Precision", "color: #6366f1; font-weight: bold; font-size: 14px;");
   
   const statusEl = document.createElement('div');
   const style = "position: fixed; top: 20px; right: 20px; z-index: 2147483647; background: #0f172a; color: white; padding: 25px; border-radius: 24px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid #6366f1; min-width: 320px; text-align: center; transition: all 0.4s ease;";
@@ -139,17 +139,27 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
         const img = el.querySelector("img");
         
         if (priceMatch && img && img.src && !img.src.includes("avatar")) {
-          const lines = text.split("\\n").map(l => l.trim()).filter(l => l.length > 2 && !l.includes("€") && !l.includes("£") && !l.includes("$"));
-          const title = lines.find(l => l.length > 3) || "Article Vinted";
-          const brand = lines.find(l => l.length > 2 && l !== title) || "";
+          // Robust filtering for Titles and Brands
+          const lines = text.split("\\n")
+            .map(l => l.trim())
+            .filter(l => {
+              const lower = l.toLowerCase();
+              return l.length > 2 && 
+                     !l.includes("€") && !l.includes("£") && !l.includes("$") && 
+                     !/\\d+ (vues|views|vistas|visualizações)/i.test(l) && // Skip view counts
+                     !/vendu|sold|terminé|finalisé|verkocht|venduto|favoris|évit/i.test(lower); // Skip status labels
+            });
           
-          const lower = text.toLowerCase();
-          const isSold = lower.includes("vendu") || lower.includes("sold") || lower.includes("terminé") || lower.includes("finalis") || lower.includes("verkocht") || lower.includes("venduto");
+          const titleCandidate = lines.sort((a, b) => b.length - a.length)[0] || "Article Vinted";
+          const brandCandidate = lines.find(l => l !== titleCandidate && l.length > 2) || "";
+          
+          const lowerText = text.toLowerCase();
+          const isSold = lowerText.includes("vendu") || lowerText.includes("sold") || lowerText.includes("terminé") || lowerText.includes("finalis") || lowerText.includes("verkocht") || lowerText.includes("venduto");
           const status = (isSalesPage || isSold) ? "SOLD" : "IN_STOCK";
           
           items.push({ 
-            title: title.substring(0, 100), 
-            brand: brand.substring(0, 50), 
+            title: titleCandidate.substring(0, 100), 
+            brand: brandCandidate.substring(0, 50), 
             purchasePrice: 0,
             salePrice: parseFloat((priceMatch[1] || "0").replace(",", ".")), 
             imageUrl: img.src, 
@@ -347,17 +357,26 @@ function scrapeData() {
       const img = el.querySelector("img");
       
       if (priceMatch && img && img.src && !img.src.includes("avatar")) {
-        const lines = text.split("\\n").map(l => l.trim()).filter(l => l.length > 2 && !l.includes("€") && !l.includes("£") && !l.includes("$"));
-        const title = lines.find(l => l.length > 3) || "Article Vinted";
-        const brand = lines.find(l => l.length > 2 && l !== title) || "";
+        const lines = text.split("\\n")
+          .map(l => l.trim())
+          .filter(l => {
+            const lower = l.toLowerCase();
+            return l.length > 2 && 
+                   !l.includes("€") && !l.includes("£") && !l.includes("$") && 
+                   !/\\d+ (vues|views|vistas|visualizações)/i.test(l) &&
+                   !/vendu|sold|terminé|finalisé|verkocht|venduto|favoris/i.test(lower);
+          });
         
-        const lower = text.toLowerCase();
-        const isSold = lower.includes("vendu") || lower.includes("sold") || lower.includes("finalis") || lower.includes("termin") || lower.includes("verkocht") || lower.includes("venduto");
+        const titleCandidate = lines.sort((a, b) => b.length - a.length)[0] || "Article Vinted";
+        const brandCandidate = lines.find(l => l !== titleCandidate && l.length > 2) || "";
+        
+        const lowerText = text.toLowerCase();
+        const isSold = lowerText.includes("vendu") || lowerText.includes("sold") || lowerText.includes("finalis") || lowerText.includes("termin") || lowerText.includes("verkocht") || lowerText.includes("venduto");
         const status = (isSalesPage || isSold) ? "SOLD" : "IN_STOCK";
         
         items.push({ 
-          title: title.substring(0, 100), 
-          brand: brand.substring(0, 50), 
+          title: titleCandidate.substring(0, 100), 
+          brand: brandCandidate.substring(0, 50), 
           salePrice: parseFloat((priceMatch[1] || "0").replace(",", ".")), 
           imageUrl: img.src, 
           status, 
