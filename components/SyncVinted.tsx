@@ -16,7 +16,8 @@ import {
   Timer,
   MousePointer2,
   Fingerprint,
-  Puzzle
+  Puzzle,
+  Zap
 } from 'lucide-react';
 import { ConnectedAccount, InventoryItem, ItemStatus, ItemCondition, ItemSubStatus } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -224,32 +225,34 @@ IMPORTANT : Chrome refuse de charger l'extension si les fichiers sont mal nommé
     };
 
     const contentJs = `
-const SYNC_CONFIG = { MIN_DELAY: 800, MAX_DELAY: 3000, VERSION: '15.0 Stealth' };
+const SYNC_CONFIG = { MIN_DELAY: 600, MAX_DELAY: 2000, VERSION: '15.5 Pro Stealth' };
 const wait = (min, max) => new Promise(res => setTimeout(res, Math.floor(Math.random()*(max-min+1)+min)));
 
 async function stealthScroll() {
   let currentPos = 0;
   const totalHeight = document.body.scrollHeight;
-  const overlay = createStatusOverlay("Synchronisation Furtive...");
+  const overlay = createStatusOverlay("Extraction Ghost Engine v15.5...");
   while (currentPos < totalHeight) {
-    currentPos += Math.floor(Math.random() * 450) + 200;
+    currentPos += Math.floor(Math.random() * 500) + 200;
     window.scrollTo({ top: currentPos, behavior: 'smooth' });
     const progress = Math.min(100, Math.round((currentPos / totalHeight) * 100));
     updateOverlayProgress(overlay, progress);
     await wait(SYNC_CONFIG.MIN_DELAY, SYNC_CONFIG.MAX_DELAY);
-    if (currentPos > 25000) break;
+    if (currentPos > 35000) break;
   }
+  overlay.innerHTML = '<div style="font-weight: 800; color: #10b981;">✅ Extraction terminée !</div>';
+  await wait(1000, 1500);
   overlay.remove();
   return scrapeData();
 }
 
 function createStatusOverlay(text) {
   const div = document.createElement('div');
-  div.style.cssText = "position: fixed; top: 20px; right: 20px; z-index: 99999; background: #0f172a; color: white; padding: 20px; border-radius: 16px; font-family: sans-serif; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); border: 2px solid #6366f1; min-width: 250px;";
-  div.innerHTML = '<div style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #818cf8; margin-bottom: 8px;">ResellPro Ghost Mode</div>' +
-                  '<div id="rp-status-text" style="font-weight: 800; margin-bottom: 10px;">' + text + '</div>' +
-                  '<div style="width: 100%; background: #1e293b; height: 6px; border-radius: 3px; overflow: hidden;">' +
-                  '<div id="rp-progress-bar" style="width: 0%; height: 100%; background: #6366f1; transition: width 0.3s ease;"></div></div>';
+  div.style.cssText = "position: fixed; top: 20px; right: 20px; z-index: 99999; background: #0f172a; color: white; padding: 25px; border-radius: 20px; font-family: -apple-system, blinkmacsystemfont, sans-serif; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 2px solid #6366f1; min-width: 280px; text-align: center;";
+  div.innerHTML = '<div style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #818cf8; margin-bottom: 10px;">ResellPro Stealth Mode</div>' +
+                  '<div id="rp-status-text" style="font-weight: 900; margin-bottom: 15px;">' + text + '</div>' +
+                  '<div style="width: 100%; background: #1e293b; height: 8px; border-radius: 4px; overflow: hidden;">' +
+                  '<div id="rp-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #6366f1, #a855f7); transition: width 0.3s ease;"></div></div>';
   document.body.appendChild(div);
   return div;
 }
@@ -261,20 +264,42 @@ function updateOverlayProgress(overlay, progress) {
 
 function scrapeData() {
   const items = [];
-  const itemContainers = document.querySelectorAll(".feed-grid__item, .user-main-stats__item, .profile__items-grid-item, [data-testid*='grid-item']");
-  const isSalesPage = window.location.href.includes("type=sold");
+  const selectors = [
+    ".feed-grid__item", 
+    ".profile__items-grid-item", 
+    ".user-main-stats__item", 
+    ".order-list-item", 
+    ".purchase-item", 
+    "[data-testid*='grid-item']",
+    ".c-order-list__item",
+    "article"
+  ];
+  
+  const itemContainers = document.querySelectorAll(selectors.join(", "));
+  const isSalesPage = window.location.href.includes("type=sold") || window.location.href.includes("transactions") || window.location.href.includes("orders");
+  
   itemContainers.forEach(container => {
     try {
       const priceMatch = container.innerText.match(/(\\d+[,.]?\\d*)\\s*€/);
       const img = container.querySelector("img");
       if (priceMatch && img && img.src && !img.src.includes("avatar")) {
-        const title = container.innerText.split("\\n")[0];
-        const status = (isSalesPage || container.innerText.toLowerCase().includes("vendu")) ? "SOLD" : "IN_STOCK";
-        items.push({ title, brand: title.split(" ")[0], salePrice: parseFloat(priceMatch[1].replace(",", ".")), imageUrl: img.src, status, date: new Date().toISOString().split("T")[0] });
+        const text = container.innerText.split("\\n").filter(t => t.length > 3);
+        const title = text[0] ? text[0].trim().substring(0, 100) : "Article Vinted";
+        const status = (isSalesPage || container.innerText.toLowerCase().includes("vendu") || container.innerText.toLowerCase().includes("sold")) ? "SOLD" : "IN_STOCK";
+        items.push({ 
+          title, 
+          brand: title.split(" ")[0], 
+          salePrice: parseFloat(priceMatch[1].replace(",", ".")), 
+          imageUrl: img.src, 
+          status, 
+          date: new Date().toISOString().split("T")[0] 
+        });
       }
     } catch (e) {}
   });
-  return { platform: "VINTED", items };
+  
+  const unique = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title && Math.abs(t.salePrice - v.salePrice) < 0.1))===i);
+  return { platform: "VINTED", items: unique };
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -287,12 +312,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     const popupHtml = `
 <html>
-<body style="width: 300px; padding: 25px; font-family: sans-serif; background: #0f172a; color: white;">
-  <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #818cf8; margin-bottom: 8px;">Stealth Extension</div>
-  <h2 style="font-size: 20px; font-weight: 900; margin-bottom: 20px; color: white;">RESELLPRO SYNC</h2>
-  <button id="scrapeBtn" style="width: 100%; padding: 15px; background: #6366f1; color: white; border: none; border-radius: 16px; font-weight: 800; cursor: pointer; transition: all 0.3s ease;">Démarrer la Synchronisation</button>
-  <div id="result" style="margin-top: 20px; font-size: 11px; display: none; background: #1e293b; padding: 15px; border-radius: 12px; line-height: 1.6;"></div>
-  <button id="copyBtn" style="width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 12px; margin-top: 15px; display: none; font-weight: 800; cursor: pointer;">Copier le JSON pour ResellPro</button>
+<body style="width: 320px; padding: 0; font-family: sans-serif; background: #0f172a; color: white;">
+  <div style="background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); padding: 25px; border-bottom: 1px solid #334155;">
+    <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 3px; color: #818cf8; font-weight: 800; margin-bottom: 5px;">Ghost Sync Engine v15.5</div>
+    <h2 style="font-size: 22px; font-weight: 900; margin: 0; italic; tracking: -0.05em;">RESELLPRO<span style="color: #6366f1;">.PRO</span></h2>
+  </div>
+  <div style="padding: 25px;">
+    <button id="scrapeBtn" style="width: 100%; padding: 16px; background: #6366f1; color: white; border: none; border-radius: 16px; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.5);">
+      Lancer l'Extraction Stealth
+    </button>
+    <div id="result" style="margin-top: 20px; font-size: 12px; display: none; background: #1e293b; padding: 15px; border-radius: 14px; border: 1px solid #334155; line-height: 1.5;"></div>
+    <button id="copyBtn" style="width: 100%; padding: 14px; background: #10b981; color: white; border: none; border-radius: 14px; margin-top: 15px; display: none; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; cursor: pointer;">
+      🚀 Importer dans ResellPro
+    </button>
+  </div>
   <script src="popup.js"></script>
 </body>
 </html>
@@ -301,26 +334,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const popupJs = `
 document.getElementById('scrapeBtn').onclick = async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab.url.includes('vinted')) { alert('Rendez-vous sur Vinted !'); return; }
+  if (!tab.url.includes('vinted')) { alert('Veuillez ouvrir Vinted (Profil, Commandes ou Achats)'); return; }
+  
   const btn = document.getElementById('scrapeBtn');
-  btn.innerText = "Analyse en cours...";
+  btn.innerText = "Synchronisation...";
   btn.disabled = true;
-  btn.style.opacity = '0.7';
+  btn.style.opacity = '0.5';
+
   chrome.tabs.sendMessage(tab.id, { action: "START_SYNC" }, (response) => {
-    btn.innerText = "Démarrer la Synchronisation";
+    btn.innerText = "Lancer l'Extraction Stealth";
     btn.disabled = false;
     btn.style.opacity = '1';
+    
     if (response && response.data) {
-      const json = JSON.stringify(response.data, null, 2);
-      document.getElementById('result').innerHTML = '<div style="color: #10b981; font-weight: bold; margin-bottom: 5px;">✅ Analyse terminée !</div>' + response.data.items.length + " articles récupérés.";
+      const count = response.data.items.length;
+      document.getElementById('result').innerHTML = '<div style="color: #10b981; font-weight: 900; margin-bottom: 8px;">✅ EXTRACTION OK</div>' + count + ' articles identifiés avec succès.';
       document.getElementById('result').style.display = 'block';
       document.getElementById('copyBtn').style.display = 'block';
       document.getElementById('copyBtn').onclick = () => {
-        navigator.clipboard.writeText(json);
-        alert("✅ Succès : Données copiées ! Collez-les maintenant dans ResellPro.");
+        navigator.clipboard.writeText(JSON.stringify(response.data, null, 2));
+        alert("✅ Succès ! Données copiées. Allez maintenant dans ResellPro pour valider.");
       };
     } else {
-      alert("Erreur locale : Rafraîchissez Vinted.");
+      alert("Erreur locale : Rafraîchissez la page Vinted et réessayez.");
     }
   });
 };
@@ -410,144 +446,222 @@ document.getElementById('scrapeBtn').onclick = async () => {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic flex items-center gap-3">
-            <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin-slow" />
+          <h2 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic flex items-center gap-3">
+            <RefreshCw className="w-10 h-10 text-indigo-600 animate-spin-slow" />
             Vinted Power Hub
           </h2>
-          <div className="flex gap-4 mt-2">
+          <div className="flex gap-4 mt-4">
             <button 
               onClick={() => setActiveTab('ACCOUNTS')}
-              className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all ${activeTab === 'ACCOUNTS' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'}`}
+              className={`text-[10px] font-black uppercase tracking-widest px-6 py-2.5 rounded-full transition-all border-2 ${activeTab === 'ACCOUNTS' ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-transparent border-slate-200 dark:border-slate-800 text-slate-500 hover:border-indigo-400'}`}
             >
-              Comptes & Sync
+              Comptes Sync
             </button>
             <button 
               onClick={() => setActiveTab('AUTOMATIONS')}
-              className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all ${activeTab === 'AUTOMATIONS' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'}`}
+              className={`text-[10px] font-black uppercase tracking-widest px-6 py-2.5 rounded-full transition-all border-2 ${activeTab === 'AUTOMATIONS' ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-transparent border-slate-200 dark:border-slate-800 text-slate-500 hover:border-indigo-400'}`}
             >
-              Automatisations Alpha
+              Stealth Automations
             </button>
           </div>
         </div>
         
-        <button 
-          onClick={() => setIsAddModalOpen(true)}
-          className="px-8 py-4 bg-indigo-600 text-white rounded-[24px] font-black uppercase text-xs tracking-widest shadow-2xl shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all flex items-center justify-center gap-3"
-        >
-          <Plus className="w-5 h-5 font-black" />
-          Ajouter un compte
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="hidden lg:flex flex-col items-end px-6 border-r border-slate-100 dark:border-slate-800">
+             <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Protection Antiban</div>
+             <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                <span className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tighter">GHOST MODE ACTIF</span>
+             </div>
+          </div>
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="px-8 py-5 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-[28px] font-black uppercase text-xs tracking-widest shadow-2xl hover:scale-105 transition-all flex items-center justify-center gap-3"
+          >
+            <Plus className="w-5 h-5 font-black" />
+            Nouveau Compte
+          </button>
+        </div>
       </div>
 
       {activeTab === 'ACCOUNTS' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {connectedAccounts.map((account) => (
-            <div key={account.id} className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 shadow-xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
-              
-              <div className="flex justify-between items-start relative z-10 mb-6">
-                <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center">
-                  <ShieldCheck className="w-7 h-7 text-indigo-600" />
-                </div>
-                <div className="flex gap-2">
-                  <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span className="text-emerald-500 font-black text-[8px] uppercase tracking-tighter">Stealth ON</span>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+            {connectedAccounts.map((account) => (
+              <div key={account.id} className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 shadow-xl relative overflow-hidden group hover:border-indigo-500/30 transition-all">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+                
+                <div className="flex justify-between items-start relative z-10 mb-6">
+                  <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center">
+                    <ShieldCheck className="w-7 h-7 text-indigo-600" />
                   </div>
-                  <button 
-                    onClick={() => onDeleteAccount(account.id)}
-                    className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex gap-2">
+                    <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                      <span className="text-emerald-500 font-black text-[8px] uppercase tracking-tighter">Stealth ACTIVE</span>
+                    </div>
+                    <button 
+                      onClick={() => onDeleteAccount(account.id)}
+                      className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">{account.nickname}</h3>
-              <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-6">Vinted {account.platform}</p>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">{account.nickname}</h3>
+                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-8 flex items-center gap-2">
+                   VINTED {account.platform}
+                   <span className="w-1 h-1 rounded-full bg-indigo-300" />
+                   AUTH SECURISEE
+                </p>
 
-              <div className="space-y-3 mb-8">
-                <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
-                  <Calendar className="w-4 h-4" />
-                  <span className="text-[10px] font-bold uppercase italic">
-                    {account.startDate || 'Début'} → {account.endDate || 'Fin'}
-                  </span>
+                <div className="space-y-4 mb-8">
+                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                    <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+                      <Calendar className="w-4 h-4" />
+                      <span className="text-[9px] font-black uppercase">Période d'activité</span>
+                    </div>
+                    <span className="text-[9px] font-black text-slate-900 dark:text-white italic">
+                      {account.startDate || '2024'} → {account.endDate || '2024'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                    <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+                      <RefreshCw className="w-4 h-4" />
+                      <span className="text-[9px] font-black uppercase">Dernière Synchronisation</span>
+                    </div>
+                    <span className="text-[9px] font-black text-indigo-600 italic">
+                      {account.lastSync ? new Date(account.lastSync).toLocaleDateString() : 'Première fois'}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
-                  <RefreshCw className="w-4 h-4" />
-                  <span className="text-[10px] font-bold uppercase italic">
-                    Dernière sync : {account.lastSync ? new Date(account.lastSync).toLocaleDateString() : 'Jamais'}
-                  </span>
+
+                <button 
+                  onClick={() => { setSelectedAccountId(account.id); setIsSyncModalOpen(true); }}
+                  className="w-full py-5 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 group/btn"
+                >
+                  <RefreshCw className="w-5 h-5 group-hover/btn:animate-spin" />
+                  Synchroniser l'Inventaire
+                </button>
+              </div>
+            ))}
+
+            {connectedAccounts.length === 0 && (
+              <div className="col-span-full py-20 bg-slate-50 dark:bg-slate-900/50 rounded-[40px] border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center text-center">
+                <div className="w-20 h-20 bg-white dark:bg-slate-800 rounded-3xl flex items-center justify-center shadow-xl mb-6">
+                  <Info className="w-10 h-10 text-slate-300" />
                 </div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">Aucun compte lié</h3>
+                <p className="max-w-xs text-slate-500 dark:text-slate-400 font-medium text-xs">
+                  Liez vos comptes Vinted pour centraliser toutes vos ventes et achats instantanément.
+                </p>
               </div>
+            )}
+          </div>
 
-              <button 
-                onClick={() => { setSelectedAccountId(account.id); setIsSyncModalOpen(true); }}
-                className="w-full py-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Synchroniser maintenant
-              </button>
-            </div>
-          ))}
+          {/* Side stats / Intelligence */}
+          <div className="space-y-6">
+             <div className="bg-indigo-600 rounded-[32px] p-8 text-white shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-xl" />
+                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-70 italic">Intelligence Marché</h4>
+                <div className="space-y-6 relative z-10">
+                   <div>
+                      <div className="flex justify-between items-end mb-2">
+                         <span className="text-xs font-black uppercase italic">Vitesse de vente</span>
+                         <span className="text-xl font-black tracking-tighter">7.4/10</span>
+                      </div>
+                      <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                         <div className="h-full bg-emerald-400 w-[74%]" />
+                      </div>
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 bg-white/10 rounded-2xl">
+                         <div className="text-[8px] font-black uppercase opacity-60 mb-1">Marge Moyenne</div>
+                         <div className="text-xl font-black tracking-tighter">+245%</div>
+                      </div>
+                      <div className="p-4 bg-white/10 rounded-2xl">
+                         <div className="text-[8px] font-black uppercase opacity-60 mb-1">Top Catégorie</div>
+                         <div className="text-lg font-black tracking-tighter italic uppercase">Sneakers</div>
+                      </div>
+                   </div>
+                </div>
+             </div>
 
-          {connectedAccounts.length === 0 && (
-            <div className="col-span-full py-20 bg-slate-50 dark:bg-slate-900/50 rounded-[40px] border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center text-center">
-              <div className="w-20 h-20 bg-white dark:bg-slate-800 rounded-3xl flex items-center justify-center shadow-xl mb-6">
-                <Info className="w-10 h-10 text-slate-300" />
-              </div>
-              <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">Aucun compte lié</h3>
-              <p className="max-w-xs text-slate-500 dark:text-slate-400 font-medium text-xs">
-                Liez un ou plusieurs comptes Vinted pour commencer l'importation automatique de vos transactions.
-              </p>
-            </div>
-          )}
+             <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 shadow-xl">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 italic">Marques en Tendance</h4>
+                <div className="flex flex-wrap gap-2">
+                   {['Nike', 'Adidas', 'Carhartt', 'Stussy', 'Ralph Lauren', 'Stone Island'].map(brand => (
+                     <span key={brand} className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-tighter italic">
+                       #{brand}
+                     </span>
+                   ))}
+                </div>
+             </div>
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {/* Auto-Relist */}
-          <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 shadow-xl opacity-75 grayscale hover:grayscale-0 transition-all">
-            <div className="w-14 h-14 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center mb-6">
-              <RefreshCw className="w-7 h-7 text-amber-600" />
+          <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 shadow-xl relative group">
+            <div className="w-16 h-16 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <RefreshCw className="w-8 h-8 text-amber-600" />
             </div>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">Auto-Relist</h3>
-            <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-6 italic">ALPHA - BOOST GRATUIT</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-8 font-medium">
-              Supprimez et repostez vos articles automatiquement pour rester en haut du fil.
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">Auto-Relist</h3>
+            <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-6 italic">STEALTH BOOST v2</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-8 font-medium leading-relaxed">
+              Supprimez et repostez automatiquement vos articles à l'heure d'audience maximale pour rester en haut du fil.
             </p>
+            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 mb-6">
+               <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">Statut du module</div>
+               <div className="text-[10px] font-black text-amber-600">EN ATTENTE D'EXTENSION PRO</div>
+            </div>
             <button className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-2xl font-black uppercase text-[10px] tracking-widest cursor-not-allowed">
-              Extension requise
+              Configuration requise
             </button>
           </div>
 
           {/* Smart Pricing */}
-          <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 shadow-xl opacity-75 grayscale hover:grayscale-0 transition-all">
-            <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center mb-6">
-              <Timer className="w-7 h-7 text-indigo-600" />
+          <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 shadow-xl relative group">
+            <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <Zap className="w-8 h-8 text-indigo-600" />
             </div>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">Price Watcher</h3>
-            <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-6 italic">INTÉLLIGENCE ARTIFICIELLE</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-8 font-medium">
-              Analysez les prix de la concurrence et suggérez des ajustements automatiques.
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">Price Neural</h3>
+            <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-6 italic">AI INTELLIGENCE</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-8 font-medium leading-relaxed">
+              Analyse les prix de vente réels (pas juste les annonces) pour suggérer le prix parfait qui maximise ta marge.
             </p>
-            <button className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-2xl font-black uppercase text-[10px] tracking-widest cursor-not-allowed">
-              Analyse en cours...
+            <button className="w-full py-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 opacity-50 rounded-2xl font-black uppercase text-[10px] tracking-widest cursor-not-allowed italic">
+              ANALYSE ALPHA EN COURS...
             </button>
           </div>
 
           {/* Smart Offers */}
-          <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 shadow-xl opacity-75 grayscale hover:grayscale-0 transition-all">
-            <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center mb-6">
-              <MousePointer2 className="w-7 h-7 text-emerald-600" />
+          <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 shadow-xl relative group">
+            <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <MousePointer2 className="w-8 h-8 text-emerald-600" />
             </div>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">Offer Sender</h3>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">Offer Engine</h3>
             <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-6 italic">CONVERSION AUTOMATIQUE</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-8 font-medium">
-               Envoyez des offres ciblées aux "favoris" après 15 minutes d'attente.
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-8 font-medium leading-relaxed">
+               Envoie instantanément une offre personnalisée dès qu'un utilisateur met un article en favori.
             </p>
-            <button className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-2xl font-black uppercase text-[10px] tracking-widest cursor-not-allowed">
-              Activer via extension
+            <button className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-200 dark:shadow-none">
+              Activer (Bientôt)
             </button>
+          </div>
+
+          {/* Auto-Reply CRM */}
+          <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 shadow-xl relative group opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all">
+            <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center mb-6">
+              <ShieldCheck className="w-8 h-8 text-indigo-600" />
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">Auto-Responder</h3>
+            <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-6 italic">CRM INTELLIGENT</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-8 font-bold leading-relaxed">
+              Répond automatiquement aux questions fréquentes (dimensions, état, dispo) via l'IA pour ne rater aucune vente.
+            </p>
+            <span className="text-[10px] font-black text-slate-400 italic">DÉVELOPPEMENT EN COURS - Q3 2024</span>
           </div>
         </div>
       )}
