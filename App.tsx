@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Home, Layers, CreditCard, LogOut, Moon, Sun, TrendingUp, Cloud, Check, AlertCircle, Loader2, Save, Globe, RefreshCw, Link2 } from 'lucide-react';
-import { AppState, FilterState, RecurringExpense, ItemCondition, ItemStatus, ItemSubStatus } from './types';
+import { Home, Layers, CreditCard, LogOut, Moon, Sun, TrendingUp, Cloud, Check, AlertCircle, Loader2, Save, Globe, RefreshCw, Link2, Trash2, Award } from 'lucide-react';
+import { AppState, FilterState, RecurringExpense, ItemCondition, ItemStatus, ItemSubStatus, InventoryItem } from './types';
 import { INITIAL_INVENTORY, INITIAL_MEMBERS } from './constants';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -50,7 +50,7 @@ const AppContent: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'finances' | 'pricing' | 'sync' | 'matching'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'finances' | 'pricing' | 'sync' | 'matching' | 'subscriptions'>('dashboard');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [loadError, setLoadError] = useState(false);
   const [cachedOrgId, setCachedOrgId] = useState<string | null>(null);
@@ -321,6 +321,7 @@ const AppContent: React.FC = () => {
           <NavItem active={activeTab === 'sync'} onClick={() => setActiveTab('sync')} icon={<RefreshCw className="w-5 h-5" />} label="Synchro" />
           <NavItem active={activeTab === 'pricing'} onClick={() => setActiveTab('pricing')} icon={<TrendingUp className="w-5 h-5" />} label={t.nav.pricing} />
           <NavItem active={activeTab === 'finances'} onClick={() => setActiveTab('finances')} icon={<CreditCard className="w-5 h-5" />} label={t.nav.finances} />
+          <NavItem active={activeTab === 'subscriptions'} onClick={() => setActiveTab('subscriptions')} icon={<Award className="w-5 h-5" />} label="Plans" />
         </nav>
 
         <div className="p-8 space-y-4">
@@ -437,6 +438,39 @@ const AppContent: React.FC = () => {
                 state={state}
                 onUpdateInventory={(items) => setState(prev => ({ ...prev, inventory: items }))}
             />}
+            {activeTab === 'subscriptions' && (
+              <div className="space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <div className="text-center space-y-4">
+                  <h2 className="text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">Choisissez votre Plan</h2>
+                  <p className="text-lg text-slate-500 font-medium max-w-2xl mx-auto">Boostez votre business de revente avec nos outils professionnels avancés.</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  {[
+                    { name: 'Starter', price: '0€', features: ['Jusqu\'à 100 articles', 'Sync manuelle', 'Statistiques de base'], pro: false },
+                    { name: 'Pro', price: '19€', features: ['Articles illimités', 'Sync automatique', 'Suivi des tendances', 'Support prioritaire'], pro: true },
+                    { name: 'Enterprise', price: '49€', features: ['Comptes multiples', 'Accès API', 'Export comptable', 'Conseiller dédié'], pro: false }
+                  ].map((plan, idx) => (
+                    <div key={idx} className={`p-10 rounded-[48px] border-2 transition-all hover:scale-105 ${plan.pro ? 'bg-slate-900 dark:bg-indigo-600 border-indigo-600 dark:border-indigo-400 text-white shadow-2xl relative' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white'}`}>
+                      {plan.pro && <span className="absolute top-6 right-8 bg-indigo-500 text-white text-[9px] font-black uppercase tracking-widest px-4 py-1 rounded-full">Populaire</span>}
+                      <h3 className="text-2xl font-black uppercase italic mb-2 tracking-tight">{plan.name}</h3>
+                      <div className="text-4xl font-black mb-8">{plan.price}<span className="text-sm opacity-60">/mois</span></div>
+                      <ul className="space-y-4 mb-10">
+                        {plan.features.map((f, i) => (
+                          <li key={i} className="flex items-center gap-3 text-xs font-bold">
+                            <Check className={`w-4 h-4 ${plan.pro ? 'text-indigo-300' : 'text-indigo-600'}`} />
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                      <button className={`w-full py-5 rounded-[24px] font-black uppercase text-xs tracking-widest transition-all ${plan.pro ? 'bg-white text-indigo-600 hover:bg-slate-50' : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-200'}`}>
+                        Mettre à niveau
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -447,7 +481,8 @@ const AppContent: React.FC = () => {
               { id: 'matching', icon: <Link2 className="w-6 h-6" /> },
               { id: 'sync', icon: <RefreshCw className="w-6 h-6" /> },
               { id: 'pricing', icon: <TrendingUp className="w-6 h-6" /> },
-              { id: 'finances', icon: <CreditCard className="w-6 h-6" /> }
+              { id: 'finances', icon: <CreditCard className="w-6 h-6" /> },
+              { id: 'subscriptions', icon: <Award className="w-6 h-6" /> }
             ].map(tab => (
               <button 
                 key={tab.id}

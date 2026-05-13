@@ -336,6 +336,53 @@ const Dashboard: React.FC<Props> = ({ state, onBrandClick }) => {
               </ResponsiveContainer>
           </div>
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-10 rounded-[40px] shadow-sm text-white relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
+              <h3 className="text-sm font-black uppercase mb-8 flex items-center gap-3 relative z-10">
+                  <Award className="w-5 h-5 text-indigo-200" /> Pro Insights
+              </h3>
+              <div className="space-y-6 relative z-10">
+                  <p className="text-sm font-medium text-indigo-100 leading-relaxed">
+                      Débloquez des analyses avancées, le suivi des tendances du marché et la synchronisation automatique illimitée.
+                  </p>
+                  <button className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-indigo-50 transition-all shadow-lg active:scale-95">
+                      Découvrir les Plans Pro
+                  </button>
+                  <div className="flex items-center gap-4 pt-4 border-t border-white/10">
+                      <div className="flex -space-x-2">
+                          {[1,2,3].map(i => (
+                              <div key={i} className="w-6 h-6 rounded-full border-2 border-indigo-600 bg-indigo-400"></div>
+                          ))}
+                      </div>
+                      <span className="text-[10px] font-black uppercase text-indigo-200">Rejoint par +500 resellers ce mois-ci</span>
+                  </div>
+              </div>
+          </div>
+          
+          <div className="bg-white dark:bg-[#0F172A] p-10 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm">
+              <h3 className="text-sm font-black uppercase text-slate-900 dark:text-white mb-8 flex items-center gap-3">
+                  <Package className="w-5 h-5 text-indigo-500" /> Derniers Ajouts
+              </h3>
+              <div className="space-y-4">
+                  {[...inventory].reverse().slice(0, 5).map(item => (
+                      <div key={item.id} className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                          <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-xl overflow-hidden shrink-0">
+                              {item.imageUrl && <img src={item.imageUrl} className="w-full h-full object-cover" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                              <p className="text-xs font-black text-slate-900 dark:text-white truncate">{item.name}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">{item.brand} • {item.salePrice}€</p>
+                          </div>
+                          <div className="text-[9px] font-black text-slate-400 uppercase">
+                              #{item.displayId}
+                          </div>
+                      </div>
+                  ))}
+              </div>
+          </div>
+      </div>
     </div>
   );
 };

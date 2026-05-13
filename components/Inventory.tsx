@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { InventoryItem, ItemStatus, ItemSubStatus, ItemCondition, FilterState, CatalogItem } from '../types';
 import { CATEGORIES, CONDITIONS, SIZES, BRANDS } from '../constants';
 import { 
-  Plus, Search, Edit2, Trash2, X, Rocket, Image as ImageIcon, 
+  Plus, Search, Edit2, Trash2, X, Rocket, Image as ImageIcon,
   SlidersHorizontal, Scale, Tag, Hash, 
   DollarSign, Download, Copy, ImagePlus, Loader2,
   ArrowUpDown, Calendar, Clock, ChevronDown, RefreshCw, Clipboard, Sparkles, Package,
@@ -654,7 +654,7 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                   </button>
 
                   <button onClick={handleExportCSV} title={t.inventory.export_csv} className="p-3 md:p-4 bg-slate-100 dark:bg-slate-800 rounded-[18px] md:rounded-[22px] text-slate-500 hover:bg-slate-200 transition-all"><Download className="w-4 h-4 md:w-5 md:h-5" /></button>
-                  <button onClick={() => setIsFilterDrawerOpen(true)} className={`p-3 md:p-5 rounded-[18px] md:rounded-[22px] transition-all relative border-2 ${ (filters.sizes.length + filters.status.length + filters.brands.length + filters.categories.length) > 0 ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 border-transparent text-slate-500 hover:bg-slate-200'}`}><SlidersHorizontal className="w-4 h-4 md:w-5 md:h-5" /></button>
+                    <button onClick={() => setIsFilterDrawerOpen(true)} className={`p-3 md:p-5 rounded-[18px] md:rounded-[22px] transition-all relative border-2 ${ (filters.sizes.length + filters.status.length + filters.brands.length + filters.categories.length) > 0 ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 border-transparent text-slate-500 hover:bg-slate-200'}`}><SlidersHorizontal className="w-4 h-4 md:w-5 md:h-5" /></button>
                   <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="flex-[2] md:flex-none md:w-auto px-4 md:px-10 py-3 md:py-5 bg-indigo-600 text-white rounded-[18px] md:rounded-[24px] font-black uppercase text-[10px] md:text-xs shadow-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 md:gap-4"><Plus className="w-4 h-4 md:w-5 md:h-5" /> <span className="hidden sm:inline">{t.common.add}</span></button>
                 </div>
             </div>

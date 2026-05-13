@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import JSZip from 'jszip';
 import { 
   RefreshCw, 
   Plus, 
@@ -71,16 +72,16 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Ghost-Sync" v15.0 - Mode Indétectable
+// Scraper Vinted "Ghost-Sync" v16.0 - Ultra Stealth
 (async () => {
-  console.log("%c🚀 Lancement du Scraper Ghost-Sync v15.0 - ResellPro Stealth", "color: #6366f1; font-weight: bold; font-size: 14px;");
+  console.log("%c🚀 Lancement du Scraper Ghost-Sync v16.0 - ResellPro Ultra", "color: #6366f1; font-weight: bold; font-size: 14px;");
   
   const statusEl = document.createElement('div');
-  const style = "position: fixed; top: 20px; right: 20px; z-index: 10000; background: #0f172a; color: white; padding: 25px; border-radius: 24px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid #6366f1; min-width: 320px; text-align: center; transition: all 0.4s ease;";
+  const style = "position: fixed; top: 20px; right: 20px; z-index: 2147483647; background: #0f172a; color: white; padding: 25px; border-radius: 24px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid #6366f1; min-width: 320px; text-align: center; transition: all 0.4s ease;";
   statusEl.style.cssText = style;
   statusEl.innerHTML = \`
     <div style="margin-bottom: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #818cf8;">Sécurité Vinted : Maximale</div>
-    <div id="sync-progress" style="font-size: 16px; margin-bottom: 10px;">Simulation humaine...</div>
+    <div id="sync-progress" style="font-size: 16px; margin-bottom: 10px;">Initialisation...</div>
     <div style="width: 100%; background: #1e293b; height: 6px; border-radius: 3px; overflow: hidden;">
       <div id="sync-bar" style="width: 0%; height: 100%; background: #6366f1; transition: width 0.3s ease;"></div>
     </div>
@@ -90,96 +91,94 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
   const wait = (min, max) => new Promise(res => setTimeout(res, Math.floor(Math.random() * (max - min + 1) + min)));
 
   const stealthScroll = async () => {
-    const totalHeight = document.body.scrollHeight;
-    let currentPosition = 0;
-    while (currentPosition < totalHeight) {
-      const step = Math.floor(Math.random() * 400) + 200;
-      currentPosition += step;
-      window.scrollTo({ top: currentPosition, behavior: 'smooth' });
-      const progress = Math.min(100, Math.round((currentPosition/totalHeight)*100));
+    let lastHeight = document.body.scrollHeight;
+    let stationary = 0;
+    while (stationary < 5) {
+      window.scrollBy({ top: Math.random() * 800 + 400, behavior: 'smooth' });
+      await wait(1000, 2000);
+      let newHeight = document.body.scrollHeight;
+      if (newHeight === lastHeight) stationary++;
+      else {
+        stationary = 0;
+        lastHeight = newHeight;
+      }
+      const progress = Math.min(95, Math.round((window.scrollY / lastHeight) * 100));
       document.getElementById('sync-progress').innerText = "Analyse furtive... " + progress + "%";
       document.getElementById('sync-bar').style.width = progress + "%";
-      await wait(600, 1500); 
+      if (window.scrollY > 20000) break;
     }
   };
 
   await stealthScroll();
-  await wait(1000, 2000);
+  await wait(1500, 3000);
   
-  const isSalesPage = window.location.href.includes('type=sold');
+  const isSalesPage = /sold|transactions|mes_ventes|order|purchase/.test(window.location.href);
   const items = [];
-  const priceRegex = /(\\d+[,.]?\\d*)\\s*€/;
-  const idRegex = /#(\\d+)/;
-  const sizeRegex = /\\b(W\\d{2}\\s*L\\d{2}|XXS|XS|S|M|L|XL|XXL|XXXL|[2-6][0-9])\\b/i;
+  
+  // Robust Selectors
+  const selectors = [
+    '[data-testid*="grid-item"]',
+    '[data-testid*="item-card"]',
+    '.feed-grid__item',
+    '.user-main-stats__item',
+    '.profile__items-grid-item',
+    'article'
+  ];
 
-  const itemContainers = document.querySelectorAll('.feed-grid__item, .user-main-stats__item, .profile__items-grid-item, [data-testid*="grid-item"]');
-  const total = itemContainers.length;
+  const containers = document.querySelectorAll(selectors.join(','));
+  document.getElementById('sync-progress').innerText = "Extraction : " + containers.length + " trouvés";
 
-  for (let i = 0; i < total; i++) {
-    const container = itemContainers[i];
-    const img = container.querySelector('img');
-    const priceEl = container.innerText.match(priceRegex);
-    
-    if (img && img.src && priceEl && !img.src.includes('avatar')) {
-      const priceVal = parseFloat(priceEl[1].replace(',', '.'));
-      const textNodes = Array.from(container.querySelectorAll('span, p, div, h1, h2, h3, h4, a'))
-            .map(t => t.innerText.trim())
-            .filter(t => t.length > 5 && !t.includes('€'));
-
-      const title = textNodes[0] || "Article Vinted";
-      const fullText = container.innerText;
-      const fullTextLower = fullText.toLowerCase();
+  for (let i = 0; i < containers.length; i++) {
+    const el = containers[i];
+    try {
+      const text = el.innerText || "";
+      const priceMatch = text.match(/(\\d+[,.]?\\d*)\\s*[€£$]/) || text.match(/[€£$]\\s*(\\d+[,.]?\\d*)/);
+      const img = el.querySelector("img");
       
-      const hasSoldLabel = fullTextLower.includes('vendu') || 
-                         fullTextLower.includes('sold') || 
-                         fullTextLower.includes('verkocht') ||
-                         fullTextLower.includes('venduto') ||
-                         container.querySelector('[aria-label*="vendu"]') ||
-                         container.querySelector('[aria-label*="sold"]');
-
-      const itemStatus = (isSalesPage || hasSoldLabel) ? 'SOLD' : 'IN_STOCK';
-      const idMatch = title.match(idRegex) || fullText.match(idRegex);
-      const foundId = idMatch ? idMatch[0] : null; 
-      const sizeMatch = title.match(sizeRegex) || fullText.match(sizeRegex);
-      const foundSize = sizeMatch ? sizeMatch[0].toUpperCase() : '';
-
-      items.push({
-        id: foundId,
-        title: title,
-        brand: title.split(' ')[0],
-        size: foundSize,
-        purchasePrice: itemStatus === 'SOLD' ? 0 : Number(priceVal.toFixed(2)),
-        salePrice: itemStatus === 'SOLD' ? Number(priceVal.toFixed(2)) : Number((priceVal * 1.6).toFixed(2)),
-        date: new Date().toISOString().split('T')[0],
-        imageUrl: img.src,
-        category: 'Vinted Import',
-        status: itemStatus
-      });
-
-      if (i % 8 === 0) await wait(100, 300);
-    }
+      if (priceMatch && img && img.src && !img.src.includes("avatar")) {
+        const lines = text.split("\\n").map(l => l.trim()).filter(l => l.length > 2 && !l.includes("€") && !l.includes("£") && !l.includes("$"));
+        const title = lines.find(l => l.length > 3) || "Vinted Item";
+        const brand = lines.find(l => l.length > 2 && l !== title) || "";
+        
+        const lower = text.toLowerCase();
+        const isSold = lower.includes("vendu") || lower.includes("sold") || lower.includes("verkocht") || lower.includes("venduto") || lower.includes("terminé");
+        const status = (isSalesPage || isSold) ? "SOLD" : "IN_STOCK";
+        
+        items.push({ 
+          title: title.substring(0, 80), 
+          brand: brand.substring(0, 50), 
+          purchasePrice: 0,
+          salePrice: parseFloat((priceMatch[1] || "0").replace(",", ".")), 
+          imageUrl: img.src, 
+          status, 
+          date: new Date().toISOString().split("T")[0] 
+        });
+      }
+    } catch (e) {}
   }
 
-  const finalItems = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title && Math.abs(t.salePrice - v.salePrice) < 0.01))===i);
+  // Deduplicate
+  const finalItems = items.filter((v,i,a)=>a.findIndex(t=>(t.imageUrl===v.imageUrl))===i);
   const jsonOutput = JSON.stringify({ platform: 'VINTED', items: finalItems }, null, 2);
 
   if (finalItems.length > 0) {
     statusEl.style.background = "#10b981";
+    document.getElementById('sync-bar').style.width = "100%";
     statusEl.innerHTML = \`
       <div style="font-size: 20px; margin-bottom: 10px;">✅ EXTRACTION OK</div>
-      <div style="font-size: 12px; margin-bottom: 15px;">\${finalItems.length} articles sécurisés</div>
-      <button id="copy-vpro-btn" style="background: white; color: #10b981; border: none; padding: 12px; border-radius: 12px; font-weight: 900; cursor: pointer; width: 100%;">COPIER LE JSON</button>
+      <div style="font-size: 12px; margin-bottom: 15px;">\${finalItems.length} articles extraits</div>
+      <button id="copy-vpro-btn" style="background: white; color: #10b981; border: none; padding: 12px; border-radius: 12px; font-weight: 900; cursor: pointer; width: 100%;">COPIER POUR LE HUB</button>
     \`;
     
     document.getElementById('copy-vpro-btn').onclick = async () => {
       await navigator.clipboard.writeText(jsonOutput);
       document.getElementById('copy-vpro-btn').innerText = "COPIÉ !";
-      setTimeout(() => statusEl.remove(), 2000);
+      setTimeout(() => statusEl.remove(), 2500);
     };
   } else {
     statusEl.style.background = "#f43f5e";
-    statusEl.innerHTML = "❌ AUCUN ARTICLE TROUVÉ";
-    setTimeout(() => statusEl.remove(), 5000);
+    statusEl.innerHTML = "❌ AUCUN ARTICLE TROUVÉ<br><span style='font-size: 10px'>Essayez de défiler manuellement d'abord.</span>";
+    setTimeout(() => statusEl.remove(), 6000);
   }
 })();
     `;
@@ -191,23 +190,25 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
   const [isRelistActive, setIsRelistActive] = useState(false);
   const [activeTab, setActiveTab] = useState<'ACCOUNTS' | 'AUTOMATIONS'>('ACCOUNTS');
 
-  const handleDownloadExtension = () => {
+  const handleDownloadExtension = async () => {
+    const zip = new JSZip();
+
     const readme = `
 🚀 INSTALLATION DE L'EXTENSION RESELLPRO STEALTH 🚀
 
-IMPORTANT : Chrome refuse de charger l'extension si les fichiers sont mal nommés.
+L'extension est maintenant compressée en un seul fichier ZIP pour éviter les erreurs de renommage automatiques du navigateur.
 
-1. CRÉEZ un dossier vide sur votre bureau nommé "ResellPro_Extension".
-2. TÉLÉCHARGEZ les 4 fichiers ci-dessous (manifest, content, popup.html, popup.js).
-3. VÉRIFIEZ LES NOMS : 
-   - Si vous voyez "manifest (1).json", RENOMMEZ-LE en "manifest.json"
-   - Si vous voyez "content (1).js", RENOMMEZ-LE en "content.js"
-   - Idem pour "popup.js" et "popup.html".
-   - Le fichier DOIT s'appeler exactement "manifest.json".
-4. DÉPLACEZ ces fichiers dans votre dossier "ResellPro_Extension".
-5. OUVREZ chrome://extensions dans votre navigateur.
-6. ACTIVEZ le "Mode développeur" (en haut à droite).
-7. CLIQUEZ sur "Charger l'extension décompressée" et sélectionnez votre dossier.
+1. EXTRAIRE le fichier ZIP dans un dossier sur votre bureau (ex: "ResellPro_Extension").
+2. OUVREZ chrome://extensions dans votre navigateur.
+3. ACTIVEZ le "Mode développeur" (en haut à droite).
+4. CLIQUEZ sur "Charger l'extension décompressée" (Load unpacked).
+5. SÉLECTIONNEZ le dossier "ResellPro_Extension" que vous venez de créer.
+
+Le dossier doit contenir exactement :
+- manifest.json
+- content.js
+- popup.js
+- popup.html
     `;
 
     const manifest = {
@@ -297,18 +298,19 @@ function updateOverlayProgress(overlay, progress) {
 function scrapeData() {
   const items = [];
   const selectors = [
-    ".feed-grid__item", 
-    ".profile__items-grid-item", 
-    ".order-list-item", 
-    ".purchase-item", 
-    "[data-testid*='grid-item']",
-    ".c-order-list__item",
-    "article",
-    ".u-box"
+    '[data-testid*="grid-item"]',
+    '[data-testid*="item-card"]',
+    '.feed-grid__item',
+    '.user-main-stats__item',
+    '.profile__items-grid-item',
+    'article',
+    '.order-list-item', 
+    '.purchase-item',
+    '.c-order-list__item'
   ];
   
   const containers = document.querySelectorAll(selectors.join(", "));
-  const isSalesPage = /transactions|orders|sold|sales/.test(window.location.href);
+  const isSalesPage = /transactions|orders|sold|sales|achats|mes_ventes/.test(window.location.href);
   
   containers.forEach(el => {
     try {
@@ -317,16 +319,17 @@ function scrapeData() {
       const img = el.querySelector("img");
       
       if (priceMatch && img && img.src && !img.src.includes("avatar")) {
-        const lines = text.split("\\n").map(l => l.trim()).filter(l => l.length > 2 && !l.includes("€"));
+        const lines = text.split("\\n").map(l => l.trim()).filter(l => l.length > 2 && !l.includes("€") && !l.includes("£") && !l.includes("$"));
         const title = lines.find(l => l.length > 5) || "Vinted Item";
+        const brand = lines.find(l => l.length > 2 && l !== title) || "";
         
         const lower = text.toLowerCase();
-        const isSold = lower.includes("vendu") || lower.includes("sold") || lower.includes("finalis") || lower.includes("termin");
+        const isSold = lower.includes("vendu") || lower.includes("sold") || lower.includes("finalis") || lower.includes("termin") || lower.includes("verkocht") || lower.includes("venduto");
         const status = (isSalesPage || isSold) ? "SOLD" : "IN_STOCK";
         
         items.push({ 
           title: title.substring(0, 80), 
-          brand: title.split(" ")[0], 
+          brand: brand.substring(0, 50), 
           salePrice: parseFloat((priceMatch[1] || "0").replace(",", ".")), 
           imageUrl: img.src, 
           status, 
@@ -336,27 +339,7 @@ function scrapeData() {
     } catch (e) {}
   });
 
-  // Fallback
-  if (items.length < 5) {
-     document.querySelectorAll("img").forEach(img => {
-        if (img.width > 100 && !img.src.includes("avatar")) {
-           const parent = img.closest("div")?.parentElement;
-           const pStr = parent?.innerText || "";
-           const pMatch = pStr.match(/(\\d+[,.]?\\d*)\\s*[€£$]/);
-           if (pMatch) {
-              items.push({
-                 title: "Auto-Scanned Item",
-                 brand: "",
-                 salePrice: parseFloat(pMatch[1].replace(",", ".")),
-                 imageUrl: img.src,
-                 status: isSalesPage ? "SOLD" : "IN_STOCK",
-                 date: new Date().toISOString().split("T")[0]
-              });
-           }
-        }
-     });
-  }
-  
+  // Deduplicate
   const unique = items.filter((v,i,a)=>a.findIndex(t=>(t.imageUrl===v.imageUrl))===i);
   return { platform: "VINTED", items: unique };
 }
@@ -423,25 +406,23 @@ document.getElementById('scrapeBtn').onclick = async () => {
 };
     `;
 
-    const downloadFile = (name: string, content: string, type: string) => {
-      const blob = new Blob([content], { type });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    };
+    zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+    zip.file('content.js', contentJs.trim());
+    zip.file('popup.html', popupHtml.trim());
+    zip.file('popup.js', popupJs.trim());
+    zip.file('INSTRUCTIONS_INSTALLATION.txt', readme.trim());
 
-    downloadFile('manifest.json', JSON.stringify(manifest, null, 2), 'application/json');
-    downloadFile('content.js', contentJs.trim(), 'application/javascript');
-    downloadFile('popup.html', popupHtml.trim(), 'text/html');
-    downloadFile('popup.js', popupJs.trim(), 'application/javascript');
-    downloadFile('instructions.txt', readme.trim(), 'text/plain');
+    const content = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(content);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'ResellPro_Extension.zip';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     
-    alert("🚨 ATTENTION : INSTALLATION 🚨\n\nSi les fichiers téléchargés se nomment 'manifest (1).json', RENOMMEZ-LES immédiatement !\n\nIls doivent s'appeler exactement :\n- manifest.json\n- content.js\n- popup.js\n- popup.html\n\n(Enlevez le '(1)' sinon l'extension ne s'installera pas !)");
+    alert("✅ Extension téléchargée dans 'ResellPro_Extension.zip' !\n\nExtractez ce fichier ZIP dans un dossier sur votre bureau et chargez-le dans chrome://extensions.");
   };
 
   const processSyncData = () => {
