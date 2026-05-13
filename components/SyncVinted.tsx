@@ -198,61 +198,93 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 IMPORTANT : Chrome refuse de charger l'extension si les fichiers sont mal nommés.
 
 1. CRÉEZ un dossier vide sur votre bureau nommé "ResellPro_Extension".
-2. TÉLÉCHARGEZ les 5 fichiers ci-dessous.
+2. TÉLÉCHARGEZ les 4 fichiers ci-dessous (manifest, content, popup.html, popup.js).
 3. VÉRIFIEZ LES NOMS : 
    - Si vous voyez "manifest (1).json", RENOMMEZ-LE en "manifest.json"
    - Si vous voyez "content (1).js", RENOMMEZ-LE en "content.js"
-   - Idem pour "popup.js", "popup.html" et "instructions.txt".
+   - Idem pour "popup.js" et "popup.html".
+   - Le fichier DOIT s'appeler exactement "manifest.json".
 4. DÉPLACEZ ces fichiers dans votre dossier "ResellPro_Extension".
-5. OUVREZ chrome://extensions
-6. ACTIVEZ le "Mode développeur".
+5. OUVREZ chrome://extensions dans votre navigateur.
+6. ACTIVEZ le "Mode développeur" (en haut à droite).
 7. CLIQUEZ sur "Charger l'extension décompressée" et sélectionnez votre dossier.
     `;
 
     const manifest = {
       manifest_version: 3,
       name: "ResellPro Stealth Sync",
-      version: "15.0.0",
+      version: "16.1.0",
       description: "Synchronisation automatique et sécurisée pour Vinted ResellPro",
-      permissions: ["activeTab", "scripting", "clipboardWrite"],
+      permissions: ["activeTab", "scripting"],
       action: {
         default_popup: "popup.html"
       },
       content_scripts: [{
-        matches: ["*://*.vinted.fr/*", "*://*.vinted.be/*", "*://*.vinted.it/*", "*://*.vinted.es/*", "*://*.vinted.nl/*"],
+        matches: ["*://*.vinted.fr/*", "*://*.vinted.be/*", "*://*.vinted.it/*", "*://*.vinted.es/*", "*://*.vinted.nl/*", "*://*.vinted.co.uk/*", "*://*.vinted.de/*", "*://*.vinted.com/*"],
         js: ["content.js"]
       }]
     };
 
     const contentJs = `
-const SYNC_CONFIG = { MIN_DELAY: 600, MAX_DELAY: 2000, VERSION: '15.5 Pro Stealth' };
-const wait = (min, max) => new Promise(res => setTimeout(res, Math.floor(Math.random()*(max-min+1)+min)));
+const SYNC_CONFIG = { MIN_DELAY: 600, MAX_DELAY: 1400, VERSION: '16.1 Ghost' };
+const wait = (ms) => new Promise(res => setTimeout(res, ms));
 
 async function stealthScroll() {
+  const overlay = createStatusOverlay("SCANNING VINTED DATABASE...");
   let currentPos = 0;
-  const totalHeight = document.body.scrollHeight;
-  const overlay = createStatusOverlay("Extraction Ghost Engine v15.5...");
-  while (currentPos < totalHeight) {
-    currentPos += Math.floor(Math.random() * 500) + 200;
+  let lastHeight = document.body.scrollHeight;
+  let stationaryCount = 0;
+  let forceStop = false;
+
+  // Add stop button to overlay
+  const stopBtn = document.createElement('button');
+  stopBtn.innerText = "FINISH NOW";
+  stopBtn.style.cssText = "margin-top: 15px; background: #374151; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer;";
+  stopBtn.onclick = () => { forceStop = true; };
+  overlay.appendChild(stopBtn);
+
+  // Initial nudge
+  window.scrollTo({ top: 500, behavior: 'smooth' });
+  await wait(800);
+
+  while (stationaryCount < 12 && !forceStop) { 
+    const scrollStep = Math.floor(Math.random() * 800) + 500;
+    currentPos += scrollStep;
     window.scrollTo({ top: currentPos, behavior: 'smooth' });
-    const progress = Math.min(100, Math.round((currentPos / totalHeight) * 100));
+    
+    await wait(Math.floor(Math.random() * (SYNC_CONFIG.MAX_DELAY - SYNC_CONFIG.MIN_DELAY)) + SYNC_CONFIG.MIN_DELAY);
+    
+    const newHeight = document.body.scrollHeight;
+    const progress = Math.min(99, Math.round((currentPos / Math.max(newHeight, currentPos + 1)) * 100));
     updateOverlayProgress(overlay, progress);
-    await wait(SYNC_CONFIG.MIN_DELAY, SYNC_CONFIG.MAX_DELAY);
-    if (currentPos > 35000) break;
+
+    if (newHeight <= lastHeight && currentPos >= newHeight - 300) {
+      stationaryCount++;
+    } else {
+      stationaryCount = 0;
+      lastHeight = newHeight;
+    }
+    
+    if (currentPos > 100000) break;
   }
-  overlay.innerHTML = '<div style="font-weight: 800; color: #10b981;">✅ Extraction terminée !</div>';
-  await wait(1000, 1500);
+  
+  updateOverlayProgress(overlay, 100);
+  const statusTxt = document.getElementById("rp-status-text");
+  if (statusTxt) statusTxt.innerHTML = '<span style="color: #10b981;">SYNC OK</span>';
+  if (stopBtn) stopBtn.remove();
+  await wait(800);
   overlay.remove();
   return scrapeData();
 }
 
 function createStatusOverlay(text) {
   const div = document.createElement('div');
-  div.style.cssText = "position: fixed; top: 20px; right: 20px; z-index: 99999; background: #0f172a; color: white; padding: 25px; border-radius: 20px; font-family: -apple-system, blinkmacsystemfont, sans-serif; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 2px solid #6366f1; min-width: 280px; text-align: center;";
-  div.innerHTML = '<div style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #818cf8; margin-bottom: 10px;">ResellPro Stealth Mode</div>' +
+  div.id = "rp-overlay";
+  div.style.cssText = "position: fixed; top: 20px; right: 20px; z-index: 2147483647; background: #0f172a; color: white; padding: 25px; border-radius: 20px; font-family: sans-serif; box-shadow: 0 20px 40px rgba(0,0,0,0.5); border: 2px solid #6366f1; min-width: 280px; text-align: center;";
+  div.innerHTML = '<div style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #818cf8; margin-bottom: 10px; font-weight: 800;">ResellPro Stealth Engine</div>' +
                   '<div id="rp-status-text" style="font-weight: 900; margin-bottom: 15px;">' + text + '</div>' +
                   '<div style="width: 100%; background: #1e293b; height: 8px; border-radius: 4px; overflow: hidden;">' +
-                  '<div id="rp-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #6366f1, #a855f7); transition: width 0.3s ease;"></div></div>';
+                  '<div id="rp-progress-bar" style="width: 0%; height: 100%; background: #6366f1; transition: width 0.3s ease;"></div></div>';
   document.body.appendChild(div);
   return div;
 }
@@ -267,29 +299,35 @@ function scrapeData() {
   const selectors = [
     ".feed-grid__item", 
     ".profile__items-grid-item", 
-    ".user-main-stats__item", 
     ".order-list-item", 
     ".purchase-item", 
     "[data-testid*='grid-item']",
     ".c-order-list__item",
-    "article"
+    "article",
+    ".u-box"
   ];
   
-  const itemContainers = document.querySelectorAll(selectors.join(", "));
-  const isSalesPage = window.location.href.includes("type=sold") || window.location.href.includes("transactions") || window.location.href.includes("orders");
+  const containers = document.querySelectorAll(selectors.join(", "));
+  const isSalesPage = /transactions|orders|sold|sales/.test(window.location.href);
   
-  itemContainers.forEach(container => {
+  containers.forEach(el => {
     try {
-      const priceMatch = container.innerText.match(/(\\d+[,.]?\\d*)\\s*€/);
-      const img = container.querySelector("img");
+      const text = el.innerText || "";
+      const priceMatch = text.match(/(\\d+[,.]?\\d*)\\s*[€£$]/) || text.match(/[€£$]\\s*(\\d+[,.]?\\d*)/);
+      const img = el.querySelector("img");
+      
       if (priceMatch && img && img.src && !img.src.includes("avatar")) {
-        const text = container.innerText.split("\\n").filter(t => t.length > 3);
-        const title = text[0] ? text[0].trim().substring(0, 100) : "Article Vinted";
-        const status = (isSalesPage || container.innerText.toLowerCase().includes("vendu") || container.innerText.toLowerCase().includes("sold")) ? "SOLD" : "IN_STOCK";
+        const lines = text.split("\\n").map(l => l.trim()).filter(l => l.length > 2 && !l.includes("€"));
+        const title = lines.find(l => l.length > 5) || "Vinted Item";
+        
+        const lower = text.toLowerCase();
+        const isSold = lower.includes("vendu") || lower.includes("sold") || lower.includes("finalis") || lower.includes("termin");
+        const status = (isSalesPage || isSold) ? "SOLD" : "IN_STOCK";
+        
         items.push({ 
-          title, 
+          title: title.substring(0, 80), 
           brand: title.split(" ")[0], 
-          salePrice: parseFloat(priceMatch[1].replace(",", ".")), 
+          salePrice: parseFloat((priceMatch[1] || "0").replace(",", ".")), 
           imageUrl: img.src, 
           status, 
           date: new Date().toISOString().split("T")[0] 
@@ -297,15 +335,36 @@ function scrapeData() {
       }
     } catch (e) {}
   });
+
+  // Fallback
+  if (items.length < 5) {
+     document.querySelectorAll("img").forEach(img => {
+        if (img.width > 100 && !img.src.includes("avatar")) {
+           const parent = img.closest("div")?.parentElement;
+           const pStr = parent?.innerText || "";
+           const pMatch = pStr.match(/(\\d+[,.]?\\d*)\\s*[€£$]/);
+           if (pMatch) {
+              items.push({
+                 title: "Auto-Scanned Item",
+                 brand: "",
+                 salePrice: parseFloat(pMatch[1].replace(",", ".")),
+                 imageUrl: img.src,
+                 status: isSalesPage ? "SOLD" : "IN_STOCK",
+                 date: new Date().toISOString().split("T")[0]
+              });
+           }
+        }
+     });
+  }
   
-  const unique = items.filter((v,i,a)=>a.findIndex(t=>(t.title===v.title && Math.abs(t.salePrice - v.salePrice) < 0.1))===i);
+  const unique = items.filter((v,i,a)=>a.findIndex(t=>(t.imageUrl===v.imageUrl))===i);
   return { platform: "VINTED", items: unique };
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "START_SYNC") {
     stealthScroll().then(data => sendResponse({ data }));
-    return true;
+    return true; 
   }
 });
     `;
@@ -313,17 +372,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const popupHtml = `
 <html>
 <body style="width: 320px; padding: 0; font-family: sans-serif; background: #0f172a; color: white;">
-  <div style="background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); padding: 25px; border-bottom: 1px solid #334155;">
-    <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 3px; color: #818cf8; font-weight: 800; margin-bottom: 5px;">Ghost Sync Engine v15.5</div>
-    <h2 style="font-size: 22px; font-weight: 900; margin: 0; italic; tracking: -0.05em;">RESELLPRO<span style="color: #6366f1;">.PRO</span></h2>
+  <div style="background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); padding: 25px; border-bottom: 1px solid #334155; text-align: center;">
+    <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 3px; color: #818cf8; font-weight: 800; margin-bottom: 5px;">GHOST ENGINE PRO</div>
+    <h2 style="font-size: 22px; font-weight: 900; margin: 0; italic;">RESELLPRO<span style="color: #6366f1;">.PRO</span></h2>
   </div>
   <div style="padding: 25px;">
-    <button id="scrapeBtn" style="width: 100%; padding: 16px; background: #6366f1; color: white; border: none; border-radius: 16px; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.5);">
-      Lancer l'Extraction Stealth
+    <button id="scrapeBtn" style="width: 100%; padding: 16px; background: #6366f1; color: white; border: none; border-radius: 16px; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.4);">
+      START STEALTH SYNC
     </button>
-    <div id="result" style="margin-top: 20px; font-size: 12px; display: none; background: #1e293b; padding: 15px; border-radius: 14px; border: 1px solid #334155; line-height: 1.5;"></div>
+    <div id="result" style="margin-top: 20px; font-size: 12px; display: none; background: #1e293b; padding: 15px; border-radius: 14px; border: 1px solid #334155; line-height: 1.5; text-align: center;"></div>
     <button id="copyBtn" style="width: 100%; padding: 14px; background: #10b981; color: white; border: none; border-radius: 14px; margin-top: 15px; display: none; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; cursor: pointer;">
-      🚀 Importer dans ResellPro
+      COPY DATA TO HUB
     </button>
   </div>
   <script src="popup.js"></script>
@@ -334,29 +393,31 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const popupJs = `
 document.getElementById('scrapeBtn').onclick = async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab.url.includes('vinted')) { alert('Veuillez ouvrir Vinted (Profil, Commandes ou Achats)'); return; }
+  if (!tab || !tab.url || !tab.url.includes('vinted')) { 
+    alert('Please open Vinted page (Profile or Transactions)'); return; 
+  }
   
   const btn = document.getElementById('scrapeBtn');
-  btn.innerText = "Synchronisation...";
+  btn.innerText = "SYNCING...";
   btn.disabled = true;
   btn.style.opacity = '0.5';
 
   chrome.tabs.sendMessage(tab.id, { action: "START_SYNC" }, (response) => {
-    btn.innerText = "Lancer l'Extraction Stealth";
+    btn.innerText = "START STEALTH SYNC";
     btn.disabled = false;
     btn.style.opacity = '1';
     
     if (response && response.data) {
       const count = response.data.items.length;
-      document.getElementById('result').innerHTML = '<div style="color: #10b981; font-weight: 900; margin-bottom: 8px;">✅ EXTRACTION OK</div>' + count + ' articles identifiés avec succès.';
+      document.getElementById('result').innerHTML = '<div style="color: #10b981; font-weight: 900; margin-bottom: 8px;">EXTRACTION OK</div>' + count + ' articles identifiés.';
       document.getElementById('result').style.display = 'block';
       document.getElementById('copyBtn').style.display = 'block';
       document.getElementById('copyBtn').onclick = () => {
         navigator.clipboard.writeText(JSON.stringify(response.data, null, 2));
-        alert("✅ Succès ! Données copiées. Allez maintenant dans ResellPro pour valider.");
+        alert("Succès ! Données copiées. Collez-les maintenant dans le Power Hub.");
       };
     } else {
-      alert("Erreur locale : Rafraîchissez la page Vinted et réessayez.");
+      alert("Error: Please refresh the page and try again.");
     }
   });
 };
@@ -380,7 +441,7 @@ document.getElementById('scrapeBtn').onclick = async () => {
     downloadFile('popup.js', popupJs.trim(), 'application/javascript');
     downloadFile('instructions.txt', readme.trim(), 'text/plain');
     
-    alert("🚀 ÉTAPE CRUCIALE POUR RÉPARER :\\n\\n1. Allez dans vos téléchargements.\\n2. RENOMMEZ les fichiers si vous voyez (1) dedans : \\n   - 'manifest (1).json' -> 'manifest.json'\\n   - 'content (1).js' -> 'content.js'\\n\\nLe dossier doit contenir exactement manifest.json pour fonctionner.");
+    alert("🚨 ATTENTION : INSTALLATION 🚨\n\nSi les fichiers téléchargés se nomment 'manifest (1).json', RENOMMEZ-LES immédiatement !\n\nIls doivent s'appeler exactement :\n- manifest.json\n- content.js\n- popup.js\n- popup.html\n\n(Enlevez le '(1)' sinon l'extension ne s'installera pas !)");
   };
 
   const processSyncData = () => {
@@ -562,38 +623,46 @@ document.getElementById('scrapeBtn').onclick = async () => {
 
           {/* Side stats / Intelligence */}
           <div className="space-y-6">
-             <div className="bg-indigo-600 rounded-[32px] p-8 text-white shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-xl" />
-                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-70 italic">Intelligence Marché</h4>
+             <div className="bg-slate-900 dark:bg-indigo-600 rounded-[32px] p-8 text-white shadow-2xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-24 -mt-24 blur-3xl group-hover:scale-110 transition-transform" />
+                <div className="flex items-center gap-3 mb-6">
+                   <Zap className="w-5 h-5 text-indigo-400 group-hover:animate-pulse" />
+                   <h4 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80 italic">Intelligence Marché</h4>
+                </div>
+                
                 <div className="space-y-6 relative z-10">
                    <div>
                       <div className="flex justify-between items-end mb-2">
-                         <span className="text-xs font-black uppercase italic">Vitesse de vente</span>
-                         <span className="text-xl font-black tracking-tighter">7.4/10</span>
+                         <span className="text-[10px] font-black uppercase italic text-indigo-200">Indice de conversion</span>
+                         <span className="text-2xl font-black tracking-tighter">84.2</span>
                       </div>
-                      <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-                         <div className="h-full bg-emerald-400 w-[74%]" />
+                      <div className="h-2 bg-white/10 rounded-full overflow-hidden border border-white/5">
+                         <div className="h-full bg-gradient-to-r from-indigo-400 to-emerald-400 w-[84%]" />
                       </div>
                    </div>
+                   
                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 bg-white/10 rounded-2xl">
-                         <div className="text-[8px] font-black uppercase opacity-60 mb-1">Marge Moyenne</div>
-                         <div className="text-xl font-black tracking-tighter">+245%</div>
+                      <div className="p-5 bg-white/5 backdrop-blur-md rounded-[24px] border border-white/5 hover:bg-white/10 transition-all">
+                         <div className="text-[8px] font-black uppercase opacity-60 mb-2">ROI Moyen</div>
+                         <div className="text-2xl font-black tracking-tighter text-emerald-400">+245%</div>
                       </div>
-                      <div className="p-4 bg-white/10 rounded-2xl">
-                         <div className="text-[8px] font-black uppercase opacity-60 mb-1">Top Catégorie</div>
-                         <div className="text-lg font-black tracking-tighter italic uppercase">Sneakers</div>
+                      <div className="p-5 bg-white/5 backdrop-blur-md rounded-[24px] border border-white/5 hover:bg-white/10 transition-all">
+                         <div className="text-[8px] font-black uppercase opacity-60 mb-2">Tendance</div>
+                         <div className="text-xl font-black tracking-tighter italic uppercase text-indigo-300">VINTAGE</div>
                       </div>
                    </div>
                 </div>
              </div>
 
              <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 shadow-xl">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 italic">Marques en Tendance</h4>
+                <div className="flex items-center justify-between mb-6">
+                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Analyse de niche</h4>
+                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
                 <div className="flex flex-wrap gap-2">
-                   {['Nike', 'Adidas', 'Carhartt', 'Stussy', 'Ralph Lauren', 'Stone Island'].map(brand => (
-                     <span key={brand} className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-tighter italic">
-                       #{brand}
+                   {['Streetwear', 'Luxuex', 'Archives', 'Gorpcore', 'Y2K', 'Minimalism'].map(tag => (
+                     <span key={tag} className="px-4 py-2 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all rounded-xl text-[9px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-tighter italic cursor-default border border-transparent hover:border-indigo-200">
+                       {tag}
                      </span>
                    ))}
                 </div>
