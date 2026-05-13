@@ -72,9 +72,9 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Ghost-Sync" v16.0 - Ultra Stealth
+// Scraper Vinted "Ghost-Sync" v17.0 - Ultra Alpha
 (async () => {
-  console.log("%c🚀 Lancement du Scraper Ghost-Sync v16.0 - ResellPro Ultra", "color: #6366f1; font-weight: bold; font-size: 14px;");
+  console.log("%c🚀 Lancement du Scraper Ghost-Sync v17.0 - Ultra Robust", "color: #6366f1; font-weight: bold; font-size: 14px;");
   
   const statusEl = document.createElement('div');
   const style = "position: fixed; top: 20px; right: 20px; z-index: 2147483647; background: #0f172a; color: white; padding: 25px; border-radius: 24px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid #6366f1; min-width: 320px; text-align: center; transition: all 0.4s ease;";
@@ -93,71 +93,98 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
   const stealthScroll = async () => {
     let lastHeight = document.body.scrollHeight;
     let stationary = 0;
-    while (stationary < 5) {
-      window.scrollBy({ top: Math.random() * 800 + 400, behavior: 'smooth' });
-      await wait(1000, 2000);
+    while (stationary < 7) {
+      window.scrollBy({ top: Math.random() * 1000 + 500, behavior: 'smooth' });
+      await wait(800, 1500);
       let newHeight = document.body.scrollHeight;
       if (newHeight === lastHeight) stationary++;
       else {
         stationary = 0;
         lastHeight = newHeight;
       }
-      const progress = Math.min(95, Math.round((window.scrollY / lastHeight) * 100));
+      const progress = Math.min(95, Math.round((window.scrollY / Math.max(lastHeight, 1)) * 100));
       document.getElementById('sync-progress').innerText = "Analyse furtive... " + progress + "%";
       document.getElementById('sync-bar').style.width = progress + "%";
-      if (window.scrollY > 20000) break;
+      if (window.scrollY > 30000) break;
     }
   };
 
   await stealthScroll();
-  await wait(1500, 3000);
+  await wait(1000, 2000);
   
-  const isSalesPage = /sold|transactions|mes_ventes|order|purchase/.test(window.location.href);
+  const isSalesPage = /sold|transactions|mes_ventes|order|purchase|achats/.test(window.location.href);
   const items = [];
   
-  // Robust Selectors
-  const selectors = [
-    '[data-testid*="grid-item"]',
-    '[data-testid*="item-card"]',
-    '.feed-grid__item',
-    '.user-main-stats__item',
-    '.profile__items-grid-item',
-    'article'
-  ];
+  // High-performance robust extraction
+  const extract = () => {
+    const selectors = [
+      '[data-testid*="grid-item"]',
+      '[data-testid*="item-card"]',
+      '.feed-grid__item',
+      '.user-main-stats__item',
+      '.profile__items-grid-item',
+      '.c-order-list__item',
+      '.purchase-item',
+      '.order-list-item',
+      'article'
+    ];
 
-  const containers = document.querySelectorAll(selectors.join(','));
-  document.getElementById('sync-progress').innerText = "Extraction : " + containers.length + " trouvés";
+    const containers = document.querySelectorAll(selectors.join(','));
+    document.getElementById('sync-progress').innerText = "Extraction : " + containers.length + " trouvés";
 
-  for (let i = 0; i < containers.length; i++) {
-    const el = containers[i];
-    try {
-      const text = el.innerText || "";
-      const priceMatch = text.match(/(\\d+[,.]?\\d*)\\s*[€£$]/) || text.match(/[€£$]\\s*(\\d+[,.]?\\d*)/);
-      const img = el.querySelector("img");
-      
-      if (priceMatch && img && img.src && !img.src.includes("avatar")) {
-        const lines = text.split("\\n").map(l => l.trim()).filter(l => l.length > 2 && !l.includes("€") && !l.includes("£") && !l.includes("$"));
-        const title = lines.find(l => l.length > 3) || "Vinted Item";
-        const brand = lines.find(l => l.length > 2 && l !== title) || "";
+    containers.forEach(el => {
+      try {
+        const text = el.innerText || "";
+        const priceMatch = text.match(/(\\d+[,.]?\\d*)\\s*[€£$]/) || text.match(/[€£$]\\s*(\\d+[,.]?\\d*)/);
+        const img = el.querySelector("img");
         
-        const lower = text.toLowerCase();
-        const isSold = lower.includes("vendu") || lower.includes("sold") || lower.includes("verkocht") || lower.includes("venduto") || lower.includes("terminé");
-        const status = (isSalesPage || isSold) ? "SOLD" : "IN_STOCK";
-        
-        items.push({ 
-          title: title.substring(0, 80), 
-          brand: brand.substring(0, 50), 
-          purchasePrice: 0,
-          salePrice: parseFloat((priceMatch[1] || "0").replace(",", ".")), 
-          imageUrl: img.src, 
-          status, 
-          date: new Date().toISOString().split("T")[0] 
-        });
-      }
-    } catch (e) {}
-  }
+        if (priceMatch && img && img.src && !img.src.includes("avatar")) {
+          const lines = text.split("\\n").map(l => l.trim()).filter(l => l.length > 2 && !l.includes("€") && !l.includes("£") && !l.includes("$"));
+          const title = lines.find(l => l.length > 3) || "Article Vinted";
+          const brand = lines.find(l => l.length > 2 && l !== title) || "";
+          
+          const lower = text.toLowerCase();
+          const isSold = lower.includes("vendu") || lower.includes("sold") || lower.includes("terminé") || lower.includes("finalis") || lower.includes("verkocht") || lower.includes("venduto");
+          const status = (isSalesPage || isSold) ? "SOLD" : "IN_STOCK";
+          
+          items.push({ 
+            title: title.substring(0, 100), 
+            brand: brand.substring(0, 50), 
+            purchasePrice: 0,
+            salePrice: parseFloat((priceMatch[1] || "0").replace(",", ".")), 
+            imageUrl: img.src, 
+            status, 
+            date: new Date().toISOString().split("T")[0] 
+          });
+        }
+      } catch (e) {}
+    });
 
-  // Deduplicate
+    // Fallback if zero items but obvious items on page
+    if (items.length === 0) {
+      document.querySelectorAll('img').forEach(img => {
+        if (img.width > 50 && !img.src.includes('avatar')) {
+          const parent = img.closest('div');
+          const siblingText = parent?.innerText || parent?.parentElement?.innerText || "";
+          const priceMatch = siblingText.match(/(\\d+[,.]?\\d*)\\s*[€£$]/);
+          if (priceMatch) {
+            items.push({
+              title: "Article Auto-détecté",
+              brand: "",
+              salePrice: parseFloat(priceMatch[1].replace(",", ".")),
+              imageUrl: img.src,
+              status: isSalesPage ? "SOLD" : "IN_STOCK",
+              date: new Date().toISOString().split("T")[0]
+            });
+          }
+        }
+      });
+    }
+  };
+
+  extract();
+
+  // Deduplicate by Image URL
   const finalItems = items.filter((v,i,a)=>a.findIndex(t=>(t.imageUrl===v.imageUrl))===i);
   const jsonOutput = JSON.stringify({ platform: 'VINTED', items: finalItems }, null, 2);
 
@@ -166,7 +193,7 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
     document.getElementById('sync-bar').style.width = "100%";
     statusEl.innerHTML = \`
       <div style="font-size: 20px; margin-bottom: 10px;">✅ EXTRACTION OK</div>
-      <div style="font-size: 12px; margin-bottom: 15px;">\${finalItems.length} articles extraits</div>
+      <div style="font-size: 12px; margin-bottom: 15px;">\${finalItems.length} articles identifiés</div>
       <button id="copy-vpro-btn" style="background: white; color: #10b981; border: none; padding: 12px; border-radius: 12px; font-weight: 900; cursor: pointer; width: 100%;">COPIER POUR LE HUB</button>
     \`;
     
@@ -177,7 +204,7 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
     };
   } else {
     statusEl.style.background = "#f43f5e";
-    statusEl.innerHTML = "❌ AUCUN ARTICLE TROUVÉ<br><span style='font-size: 10px'>Essayez de défiler manuellement d'abord.</span>";
+    statusEl.innerHTML = "❌ AUCUN ARTICLE TROUVÉ<br><span style='font-size: 10px'>Scrollez un peu ou changez de page.</span>";
     setTimeout(() => statusEl.remove(), 6000);
   }
 })();
@@ -306,7 +333,8 @@ function scrapeData() {
     'article',
     '.order-list-item', 
     '.purchase-item',
-    '.c-order-list__item'
+    '.c-order-list__item',
+    '.t-item-box'
   ];
   
   const containers = document.querySelectorAll(selectors.join(", "));
@@ -320,7 +348,7 @@ function scrapeData() {
       
       if (priceMatch && img && img.src && !img.src.includes("avatar")) {
         const lines = text.split("\\n").map(l => l.trim()).filter(l => l.length > 2 && !l.includes("€") && !l.includes("£") && !l.includes("$"));
-        const title = lines.find(l => l.length > 5) || "Vinted Item";
+        const title = lines.find(l => l.length > 3) || "Article Vinted";
         const brand = lines.find(l => l.length > 2 && l !== title) || "";
         
         const lower = text.toLowerCase();
@@ -328,7 +356,7 @@ function scrapeData() {
         const status = (isSalesPage || isSold) ? "SOLD" : "IN_STOCK";
         
         items.push({ 
-          title: title.substring(0, 80), 
+          title: title.substring(0, 100), 
           brand: brand.substring(0, 50), 
           salePrice: parseFloat((priceMatch[1] || "0").replace(",", ".")), 
           imageUrl: img.src, 
@@ -338,6 +366,27 @@ function scrapeData() {
       }
     } catch (e) {}
   });
+
+  // Fallback if zero items
+  if (items.length === 0) {
+    document.querySelectorAll('img').forEach(img => {
+      if (img.width > 50 && !img.src.includes('avatar')) {
+        const p = img.closest('div')?.parentElement;
+        const pt = p?.innerText || "";
+        const pm = pt.match(/(\\d+[,.]?\\d*)\\s*[€£$]/);
+        if (pm) {
+          items.push({
+            title: "Article Détecté",
+            brand: "",
+            salePrice: parseFloat(pm[1].replace(",", ".")),
+            imageUrl: img.src,
+            status: isSalesPage ? "SOLD" : "IN_STOCK",
+            date: new Date().toISOString().split("T")[0]
+          });
+        }
+      }
+    });
+  }
 
   // Deduplicate
   const unique = items.filter((v,i,a)=>a.findIndex(t=>(t.imageUrl===v.imageUrl))===i);
@@ -392,12 +441,12 @@ document.getElementById('scrapeBtn').onclick = async () => {
     
     if (response && response.data) {
       const count = response.data.items.length;
-      document.getElementById('result').innerHTML = '<div style="color: #10b981; font-weight: 900; margin-bottom: 8px;">EXTRACTION OK</div>' + count + ' articles identifiés.';
+      document.getElementById('result').innerHTML = '<div style="color: #10b981; font-weight: 900; margin-bottom: 8px;">EXTRACTION OK</div>' + count + ' articles identifiers.';
       document.getElementById('result').style.display = 'block';
       document.getElementById('copyBtn').style.display = 'block';
       document.getElementById('copyBtn').onclick = () => {
         navigator.clipboard.writeText(JSON.stringify(response.data, null, 2));
-        alert("Succès ! Données copiées. Collez-les maintenant dans le Power Hub.");
+        alert("Success ! Donnees copiees. Collez-les maintenant dans le Power Hub.");
       };
     } else {
       alert("Error: Please refresh the page and try again.");

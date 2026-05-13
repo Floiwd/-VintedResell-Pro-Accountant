@@ -12,9 +12,10 @@ import { useLanguage } from '../contexts/LanguageContext';
 interface Props {
   state: AppState;
   onBrandClick?: (brand: string) => void;
+  onNavigate?: (tab: 'dashboard' | 'inventory' | 'finances' | 'pricing' | 'sync' | 'matching' | 'subscriptions') => void;
 }
 
-const Dashboard: React.FC<Props> = ({ state, onBrandClick }) => {
+const Dashboard: React.FC<Props> = ({ state, onBrandClick, onNavigate }) => {
   const { t } = useLanguage();
   const { inventory, monthlyGoal = 1000 } = state;
 
@@ -347,7 +348,10 @@ const Dashboard: React.FC<Props> = ({ state, onBrandClick }) => {
                   <p className="text-sm font-medium text-indigo-100 leading-relaxed">
                       Débloquez des analyses avancées, le suivi des tendances du marché et la synchronisation automatique illimitée.
                   </p>
-                  <button className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-indigo-50 transition-all shadow-lg active:scale-95">
+                  <button 
+                    onClick={() => onNavigate?.('subscriptions')}
+                    className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-indigo-50 transition-all shadow-lg active:scale-95"
+                  >
                       Découvrir les Plans Pro
                   </button>
                   <div className="flex items-center gap-4 pt-4 border-t border-white/10">

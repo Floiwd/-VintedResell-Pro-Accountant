@@ -394,7 +394,7 @@ const AppContent: React.FC = () => {
 
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 md:p-12 pb-32 lg:pb-12 scroll-smooth">
           <div className="max-w-7xl mx-auto">
-            {activeTab === 'dashboard' && <Dashboard state={state} onBrandClick={(brand) => {
+            {activeTab === 'dashboard' && <Dashboard state={state} onNavigate={setActiveTab} onBrandClick={(brand) => {
               setState(prev => ({ ...prev, filters: { brands: [brand], categories: prev.filters?.categories || [], sizes: prev.filters?.sizes || [], status: prev.filters?.status || [], dateRange: prev.filters?.dateRange || { start: '', end: '' }, sortBy: prev.filters?.sortBy, searchTerm: prev.filters?.searchTerm } }));
               setActiveTab('inventory');
             }} />}
