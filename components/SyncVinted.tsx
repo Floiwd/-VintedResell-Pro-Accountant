@@ -191,21 +191,23 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
   const [activeTab, setActiveTab] = useState<'ACCOUNTS' | 'AUTOMATIONS'>('ACCOUNTS');
 
   const handleDownloadExtension = () => {
-    // Generate README instructions
     const readme = `
 🚀 INSTALLATION DE L'EXTENSION RESELLPRO STEALTH 🚀
 
-1. CRÉEZ un nouveau dossier sur votre bureau nommé "ResellPro_Extension".
-2. DÉPLACEZ les fichiers "manifest.json", "content.js" et "popup.js" (que vous venez de télécharger) dans ce dossier.
-3. OUVREZ Chrome et allez sur : chrome://extensions
-4. ACTIVEZ le "Mode développeur" (en haut à droite).
-5. CLIQUEZ sur "Charger l'extension décompressée".
-6. SÉLECTIONNEZ votre dossier "ResellPro_Extension".
+IMPORTANT : Chrome refuse de charger l'extension si les fichiers sont mal nommés.
 
-L'icône ResellPro apparaîtra dans votre barre d'extensions !
+1. CRÉEZ un dossier vide sur votre bureau nommé "ResellPro_Extension".
+2. TÉLÉCHARGEZ les 5 fichiers ci-dessous.
+3. VÉRIFIEZ LES NOMS : 
+   - Si vous voyez "manifest (1).json", RENOMMEZ-LE en "manifest.json"
+   - Si vous voyez "content (1).js", RENOMMEZ-LE en "content.js"
+   - Idem pour "popup.js", "popup.html" et "instructions.txt".
+4. DÉPLACEZ ces fichiers dans votre dossier "ResellPro_Extension".
+5. OUVREZ chrome://extensions
+6. ACTIVEZ le "Mode développeur".
+7. CLIQUEZ sur "Charger l'extension décompressée" et sélectionnez votre dossier.
     `;
 
-    // Download manifest.json
     const manifest = {
       manifest_version: 3,
       name: "ResellPro Stealth Sync",
@@ -221,61 +223,128 @@ L'icône ResellPro apparaîtra dans votre barre d'extensions !
       }]
     };
 
+    const contentJs = `
+const SYNC_CONFIG = { MIN_DELAY: 800, MAX_DELAY: 3000, VERSION: '15.0 Stealth' };
+const wait = (min, max) => new Promise(res => setTimeout(res, Math.floor(Math.random()*(max-min+1)+min)));
+
+async function stealthScroll() {
+  let currentPos = 0;
+  const totalHeight = document.body.scrollHeight;
+  const overlay = createStatusOverlay("Synchronisation Furtive...");
+  while (currentPos < totalHeight) {
+    currentPos += Math.floor(Math.random() * 450) + 200;
+    window.scrollTo({ top: currentPos, behavior: 'smooth' });
+    const progress = Math.min(100, Math.round((currentPos / totalHeight) * 100));
+    updateOverlayProgress(overlay, progress);
+    await wait(SYNC_CONFIG.MIN_DELAY, SYNC_CONFIG.MAX_DELAY);
+    if (currentPos > 25000) break;
+  }
+  overlay.remove();
+  return scrapeData();
+}
+
+function createStatusOverlay(text) {
+  const div = document.createElement('div');
+  div.style.cssText = "position: fixed; top: 20px; right: 20px; z-index: 99999; background: #0f172a; color: white; padding: 20px; border-radius: 16px; font-family: sans-serif; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); border: 2px solid #6366f1; min-width: 250px;";
+  div.innerHTML = '<div style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #818cf8; margin-bottom: 8px;">ResellPro Ghost Mode</div>' +
+                  '<div id="rp-status-text" style="font-weight: 800; margin-bottom: 10px;">' + text + '</div>' +
+                  '<div style="width: 100%; background: #1e293b; height: 6px; border-radius: 3px; overflow: hidden;">' +
+                  '<div id="rp-progress-bar" style="width: 0%; height: 100%; background: #6366f1; transition: width 0.3s ease;"></div></div>';
+  document.body.appendChild(div);
+  return div;
+}
+
+function updateOverlayProgress(overlay, progress) {
+  const bar = overlay.querySelector("#rp-progress-bar");
+  if (bar) bar.style.width = progress + "%";
+}
+
+function scrapeData() {
+  const items = [];
+  const itemContainers = document.querySelectorAll(".feed-grid__item, .user-main-stats__item, .profile__items-grid-item, [data-testid*='grid-item']");
+  const isSalesPage = window.location.href.includes("type=sold");
+  itemContainers.forEach(container => {
+    try {
+      const priceMatch = container.innerText.match(/(\\d+[,.]?\\d*)\\s*€/);
+      const img = container.querySelector("img");
+      if (priceMatch && img && img.src && !img.src.includes("avatar")) {
+        const title = container.innerText.split("\\n")[0];
+        const status = (isSalesPage || container.innerText.toLowerCase().includes("vendu")) ? "SOLD" : "IN_STOCK";
+        items.push({ title, brand: title.split(" ")[0], salePrice: parseFloat(priceMatch[1].replace(",", ".")), imageUrl: img.src, status, date: new Date().toISOString().split("T")[0] });
+      }
+    } catch (e) {}
+  });
+  return { platform: "VINTED", items };
+}
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "START_SYNC") {
+    stealthScroll().then(data => sendResponse({ data }));
+    return true;
+  }
+});
+    `;
+
+    const popupHtml = `
+<html>
+<body style="width: 300px; padding: 25px; font-family: sans-serif; background: #0f172a; color: white;">
+  <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #818cf8; margin-bottom: 8px;">Stealth Extension</div>
+  <h2 style="font-size: 20px; font-weight: 900; margin-bottom: 20px; color: white;">RESELLPRO SYNC</h2>
+  <button id="scrapeBtn" style="width: 100%; padding: 15px; background: #6366f1; color: white; border: none; border-radius: 16px; font-weight: 800; cursor: pointer; transition: all 0.3s ease;">Démarrer la Synchronisation</button>
+  <div id="result" style="margin-top: 20px; font-size: 11px; display: none; background: #1e293b; padding: 15px; border-radius: 12px; line-height: 1.6;"></div>
+  <button id="copyBtn" style="width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 12px; margin-top: 15px; display: none; font-weight: 800; cursor: pointer;">Copier le JSON pour ResellPro</button>
+  <script src="popup.js"></script>
+</body>
+</html>
+    `;
+
+    const popupJs = `
+document.getElementById('scrapeBtn').onclick = async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab.url.includes('vinted')) { alert('Rendez-vous sur Vinted !'); return; }
+  const btn = document.getElementById('scrapeBtn');
+  btn.innerText = "Analyse en cours...";
+  btn.disabled = true;
+  btn.style.opacity = '0.7';
+  chrome.tabs.sendMessage(tab.id, { action: "START_SYNC" }, (response) => {
+    btn.innerText = "Démarrer la Synchronisation";
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    if (response && response.data) {
+      const json = JSON.stringify(response.data, null, 2);
+      document.getElementById('result').innerHTML = '<div style="color: #10b981; font-weight: bold; margin-bottom: 5px;">✅ Analyse terminée !</div>' + response.data.items.length + " articles récupérés.";
+      document.getElementById('result').style.display = 'block';
+      document.getElementById('copyBtn').style.display = 'block';
+      document.getElementById('copyBtn').onclick = () => {
+        navigator.clipboard.writeText(json);
+        alert("✅ Succès : Données copiées ! Collez-les maintenant dans ResellPro.");
+      };
+    } else {
+      alert("Erreur locale : Rafraîchissez Vinted.");
+    }
+  });
+};
+    `;
+
     const downloadFile = (name: string, content: string, type: string) => {
       const blob = new Blob([content], { type });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = name;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
     };
 
-    // Get current extension content from the guide or constants
-    // Actually we can just define the core code here for the bundle
-    const contentJs = `
-      // ResellPro Stealth Core v15.0
-      console.log("ResellPro Loaded");
-      // ... (Stealth logic)
-    `;
-    
-    const popupHtml = `
-      <html>
-        <body style="width: 250px; padding: 20px; font-family: sans-serif; background: #0f172a; color: white;">
-          <h2 style="font-size: 16px; font-weight: 900; margin-bottom: 15px; color: #818cf8;">RESELLPRO SYNC</h2>
-          <button id="scrapeBtn" style="width: 100%; padding: 12px; background: #6366f1; color: white; border: none; border-radius: 12px; font-weight: 800; cursor: pointer;">Lancer la Synchronisation</button>
-          <div id="result" style="margin-top: 15px; font-size: 12px; display: none; background: #1e293b; padding: 10px; border-radius: 8px;"></div>
-          <button id="copyBtn" style="width: 100%; padding: 10px; background: #10b981; color: white; border: none; border-radius: 12px; margin-top: 10px; display: none; font-weight: 800; cursor: pointer;">Copier le JSON</button>
-          <script src="popup.js"></script>
-        </body>
-      </html>
-    `;
-
-    const popupJs = `
-      document.getElementById('scrapeBtn').onclick = async () => {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        chrome.tabs.sendMessage(tab.id, { action: "START_SYNC" }, (response) => {
-          if (response && response.data) {
-            document.getElementById('result').innerText = response.data.items.length + " articles isolés.";
-            document.getElementById('result').style.display = 'block';
-            document.getElementById('copyBtn').style.display = 'block';
-            document.getElementById('copyBtn').onclick = () => {
-              navigator.clipboard.writeText(JSON.stringify(response.data, null, 2));
-              alert("Copié !");
-            };
-          }
-        });
-      };
-    `;
-
     downloadFile('manifest.json', JSON.stringify(manifest, null, 2), 'application/json');
-    downloadFile('content.js', contentJs, 'application/javascript');
-    downloadFile('popup.html', popupHtml, 'text/html');
-    downloadFile('popup.js', popupJs, 'application/javascript');
-    downloadFile('instructions.txt', readme, 'text/plain');
+    downloadFile('content.js', contentJs.trim(), 'application/javascript');
+    downloadFile('popup.html', popupHtml.trim(), 'text/html');
+    downloadFile('popup.js', popupJs.trim(), 'application/javascript');
+    downloadFile('instructions.txt', readme.trim(), 'text/plain');
     
-    // Notify user
-    alert("🚀 PACK COMPLET DÉCHARGÉ !\\n\\n1. Créez un dossier 'Extension_ResellPro'\\n2. Mettez les 5 fichiers dedans.\\n3. Chargez-le dans Chrome (Mode Développeur).");
+    alert("🚀 ÉTAPE CRUCIALE POUR RÉPARER :\\n\\n1. Allez dans vos téléchargements.\\n2. RENOMMEZ les fichiers si vous voyez (1) dedans : \\n   - 'manifest (1).json' -> 'manifest.json'\\n   - 'content (1).js' -> 'content.js'\\n\\nLe dossier doit contenir exactement manifest.json pour fonctionner.");
   };
 
   const processSyncData = () => {
