@@ -121,6 +121,7 @@ export interface AppState {
   sharedWith: string[];
   filters?: FilterState;
   catalog: CatalogItem[];
+  modelAliases?: Record<string, string>;
 }
 
 export interface AiInsightData {

@@ -4,13 +4,15 @@ import { CATEGORIES, BRANDS } from '../constants';
 import { 
   Search, ChevronDown, BrainCircuit, X, Loader2, 
   Filter, Package, Sparkles, Scale, Clock,
-  CheckCircle2, TrendingUp, Info, Hash
+  CheckCircle2, TrendingUp, Info, Hash, Link2, Trash2
 } from 'lucide-react';
 import { analyzeModelPerformance } from '../services/geminiService';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface Props {
   inventory: InventoryItem[];
+  modelAliases: Record<string, string>;
+  onUpdateAliases: (aliases: Record<string, string>) => void;
   onBrandClick?: (brand: string) => void;
 }
 
@@ -28,6 +30,8 @@ interface GroupedModel {
   maxPrice: number;
   avgDays: number;
   variants: InventoryItem[];
+  brandCounts: Record<string, number>;
+  hasRealSales?: boolean;
 }
 
 const FormatText = ({ text }: { text: string }) => {
@@ -37,7 +41,7 @@ const FormatText = ({ text }: { text: string }) => {
     );
 };
 
-export default function PricingGuide({ inventory, onBrandClick }: Props) {
+export default function PricingGuide({ inventory, modelAliases, onUpdateAliases, onBrandClick }: Props) {
   const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('vpro_pricing_search') || '');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
@@ -49,47 +53,96 @@ export default function PricingGuide({ inventory, onBrandClick }: Props) {
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
   const [aiReport, setAiReport] = useState<string | null>(null);
 
+  const [isAssociationMode, setIsAssociationMode] = useState(false);
+  const [associatingGroups, setAssociatingGroups] = useState<Set<string>>(new Set());
+
+  const [showSoldItems, setShowSoldItems] = useState(true);
+
   const groupedData = useMemo(() => {
     const groups: Record<string, GroupedModel> = {};
+
     inventory.forEach(item => {
-      const groupKey = `${item.name.toLowerCase()}|${item.brand.toLowerCase()}`;
+      // Priorité 1: Alias manuel de l'utilisateur
+      // Priorité 2: Nom original
+      const modelIdentifier = (modelAliases[item.name] || item.name).trim();
+      const groupKey = modelIdentifier.toLowerCase();
+      
       if (!groups[groupKey]) {
         groups[groupKey] = {
-          model_name: item.name, brand: item.brand, category: item.category,
-          totalVolume: 0, totalStock: 0, totalProfit: 0, minPrice: Infinity, avgPrice: 0, avgDisplayPrice: 0, maxPrice: -Infinity, avgDays: 0, variants: []
+          model_name: modelIdentifier, 
+          brand: item.brand, 
+          category: item.category,
+          totalVolume: 0, 
+          totalStock: 0, 
+          totalProfit: 0, 
+          minPrice: Infinity, 
+          avgPrice: 0, 
+          avgDisplayPrice: 0, 
+          maxPrice: -Infinity, 
+          avgDays: 0, 
+          variants: [],
+          brandCounts: {},
+          hasRealSales: false
         };
       }
       const g = groups[groupKey];
       g.variants.push(item);
+
+      // Système de vote pour la marque (on garde la marque la plus fréquente du groupe)
+      const bNorm = item.brand.toUpperCase();
+      if (bNorm && !['JEAN', 'VINTAGE', 'MOOIE', 'AUTRE', 'UNKNOWN', 'NO BRAND', ''].includes(bNorm)) {
+          g.brandCounts[bNorm] = (g.brandCounts[bNorm] || 0) + 1;
+      }
       
       if (item.status === ItemStatus.SOLD || item.status === ItemStatus.PAYMENT_PENDING) {
         g.totalVolume++;
+        g.hasRealSales = true;
         g.totalProfit += (item.salePrice - item.purchasePrice - (item.boostCost || 0));
-        g.minPrice = Math.min(g.minPrice, item.salePrice);
-        g.maxPrice = Math.max(g.maxPrice, item.salePrice);
-        g.avgPrice += item.salePrice;
-        g.avgDisplayPrice += item.displaySalePrice || item.salePrice * 1.1;
         
         const start = new Date(item.receptionDate || item.purchaseDate);
         const end = (item.saleDate) ? new Date(item.saleDate) : new Date();
         g.avgDays += Math.ceil(Math.abs(end.getTime() - start.getTime()) / 86400000);
-      } else if (item.status === ItemStatus.IN_STOCK || item.status === ItemStatus.TRANSIT) {
+      } else {
         g.totalStock++;
       }
     });
 
     return Object.values(groups).map(g => {
-      if (g.totalVolume > 0) { 
-        g.avgPrice /= g.totalVolume; 
-        g.avgDisplayPrice /= g.totalVolume;
+      // CALCUL DE LA CÔTE RÉELLE
+      // On prioritise les objets VENDUS pour définir la côte
+      const soldItems = g.variants.filter(v => v.status === ItemStatus.SOLD || v.status === ItemStatus.PAYMENT_PENDING);
+      const stockItems = g.variants.filter(v => v.status === ItemStatus.IN_STOCK || v.status === ItemStatus.TRANSIT);
+      
+      const sourceItems = soldItems.length > 0 ? soldItems : stockItems;
+      
+      if (sourceItems.length > 0) {
+          const sum = sourceItems.reduce((acc, curr) => acc + curr.salePrice, 0);
+          g.avgPrice = sum / sourceItems.length;
+          
+          const sumDisplay = sourceItems.reduce((acc, curr) => acc + (curr.displaySalePrice || curr.salePrice * 1.1), 0);
+          g.avgDisplayPrice = sumDisplay / sourceItems.length;
+
+          g.minPrice = Math.min(...sourceItems.map(i => i.salePrice));
+          g.maxPrice = Math.max(...sourceItems.map(i => i.salePrice));
+      }
+
+      if (g.totalVolume > 0) {
         g.avgDays /= g.totalVolume; 
       }
+
+      // Sélection de la marque dominante (la plus représentée dans ce groupe)
+      const sortedBrands = Object.entries(g.brandCounts).sort((a,b) => b[1] - a[1]);
+      if (sortedBrands.length > 0) {
+          g.brand = sortedBrands[0][0];
+      }
+
       return g;
     })
     .filter(g => {
       const matchesSearch = g.model_name.toLowerCase().includes(searchTerm.toLowerCase()) || g.brand.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesBrand = selectedBrand === 'all' || g.brand === selectedBrand;
-      return matchesSearch && matchesBrand;
+      const matchesSoldFilter = showSoldItems || g.totalStock > 0;
+      return matchesSearch && matchesBrand && matchesSoldFilter;
     })
     .sort((a, b) => {
         if (sortBy === 'volume') return b.totalVolume - a.totalVolume;
@@ -97,16 +150,54 @@ export default function PricingGuide({ inventory, onBrandClick }: Props) {
         if (sortBy === 'rotation') return a.avgDays - b.avgDays;
         return 0;
     });
-  }, [inventory, searchTerm, selectedBrand, sortBy]);
+  }, [inventory, searchTerm, selectedBrand, sortBy, modelAliases, showSoldItems]);
 
   const handleAiAnalyze = async () => {
       if (selectedModels.size === 0) return;
       setIsAiAnalyzing(true);
       try {
-          const dataToAnalyze = groupedData.filter(g => selectedModels.has(`${g.model_name}|${g.brand}`));
+          const dataToAnalyze = groupedData.filter(g => selectedModels.has(g.model_name.toLowerCase()));
           const report = await analyzeModelPerformance(dataToAnalyze);
           setAiReport(report);
       } catch (err) { console.error(err); } finally { setIsAiAnalyzing(false); }
+  };
+
+  const handleAssociate = () => {
+      if (associatingGroups.size < 2) return;
+      
+      const groupsToMerge = Array.from(associatingGroups)
+          .map(key => groupedData.find(g => g.model_name.toLowerCase() === key))
+          .filter((g): g is GroupedModel => !!g);
+
+      if (groupsToMerge.length < 2) return;
+
+      const sortedByVolume = [...groupsToMerge].sort((a, b) => b.totalVolume - a.totalVolume);
+      const defaultName = sortedByVolume[0].model_name;
+      
+      const targetName = prompt("Fusionner sous quel nom modèle ?", defaultName);
+      if (!targetName) return;
+
+      const newAliases = { ...modelAliases };
+      groupsToMerge.forEach(group => {
+          group.variants.forEach(item => {
+              newAliases[item.name] = targetName;
+          });
+      });
+
+      onUpdateAliases(newAliases);
+      setAssociatingGroups(new Set());
+      setIsAssociationMode(false);
+  };
+
+  const handleDeAssociate = (modelName: string) => {
+      const newAliases = { ...modelAliases };
+      // Supprimer tous les alias qui pointent vers ce nom ou dont l'original est ce nom
+      Object.keys(newAliases).forEach(originalName => {
+          if (newAliases[originalName] === modelName) {
+              delete newAliases[originalName];
+          }
+      });
+      onUpdateAliases(newAliases);
   };
 
   const getStatusLabel = (status: ItemStatus) => {
@@ -142,17 +233,51 @@ export default function PricingGuide({ inventory, onBrandClick }: Props) {
           </div>
           <div className="flex gap-4">
               <button 
-                onClick={handleAiAnalyze}
-                disabled={selectedModels.size === 0 || isAiAnalyzing}
-                className={`px-8 py-5 rounded-[24px] font-black uppercase text-xs flex items-center gap-3 transition-all ${selectedModels.size > 0 ? 'bg-indigo-600 text-white shadow-xl hover:bg-indigo-700' : 'bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed'}`}
+                onClick={() => {
+                    if (isAssociationMode) {
+                        handleAssociate();
+                    } else {
+                        setIsAssociationMode(true);
+                        setSelectedModels(new Set());
+                    }
+                }}
+                className={`px-8 py-5 rounded-[24px] font-black uppercase text-xs flex items-center gap-3 transition-all ${
+                    isAssociationMode 
+                    ? associatingGroups.size >= 2 ? 'bg-emerald-600 text-white animate-pulse' : 'bg-slate-200 text-slate-500'
+                    : 'bg-white dark:bg-[#0F172A] border-2 border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                }`}
               >
-                  {isAiAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <BrainCircuit className="w-5 h-5" />}
-                  {t.pricing.compare} ({selectedModels.size})
+                  {isAssociationMode ? <CheckCircle2 className="w-5 h-5" /> : <Link2 className="w-5 h-5" />}
+                  {isAssociationMode 
+                    ? associatingGroups.size >= 2 ? `Associer (${associatingGroups.size})` : 'Sélectionnez au moins 2' 
+                    : 'Mode Association'
+                  }
               </button>
+              {isAssociationMode && (
+                  <button onClick={() => { setIsAssociationMode(false); setAssociatingGroups(new Set()); }} className="p-5 bg-white dark:bg-[#0F172A] border-2 border-slate-100 dark:border-slate-800 rounded-[24px] text-slate-400">
+                      <X className="w-5 h-5" />
+                  </button>
+              )}
+              {!isAssociationMode && (
+                  <button 
+                    onClick={handleAiAnalyze}
+                    disabled={selectedModels.size === 0 || isAiAnalyzing}
+                    className={`px-8 py-5 rounded-[24px] font-black uppercase text-xs flex items-center gap-3 transition-all ${selectedModels.size > 0 ? 'bg-indigo-600 text-white shadow-xl hover:bg-indigo-700' : 'bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed'}`}
+                  >
+                      {isAiAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <BrainCircuit className="w-5 h-5" />}
+                      {t.pricing.compare} ({selectedModels.size})
+                  </button>
+              )}
           </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {isAssociationMode && (
+            <div className="md:col-span-3 bg-emerald-50 dark:bg-emerald-900/10 border-2 border-emerald-100 dark:border-emerald-800/50 p-6 rounded-[30px] flex items-center gap-4 text-emerald-700 dark:text-emerald-300 animate-in slide-in-from-top-4">
+                <Info className="w-6 h-6 flex-shrink-0" />
+                <p className="text-sm font-bold">Sélectionnez les modèles que vous souhaitez fusionner (par exemple des titres différents pour le même produit), puis cliquez sur le bouton vert "ASSOCIER" en haut.</p>
+            </div>
+          )}
           <div className="relative group">
               <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
               <input type="text" placeholder={t.pricing.search_placeholder} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-16 pr-6 py-5 bg-white dark:bg-[#0F172A] rounded-[24px] border-2 border-slate-100 dark:border-slate-800 shadow-sm outline-none font-bold text-sm focus:border-indigo-500" />
@@ -171,6 +296,19 @@ export default function PricingGuide({ inventory, onBrandClick }: Props) {
                   <option value="profit">{t.pricing.sort_profit}</option>
                   <option value="rotation">{t.pricing.sort_rotation}</option>
               </select>
+          </div>
+          <div className="md:col-span-3 flex justify-end">
+              <button 
+                  onClick={() => setShowSoldItems(!showSoldItems)}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                      showSoldItems 
+                      ? 'bg-slate-100 text-slate-600 dark:bg-slate-800' 
+                      : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 border border-indigo-100'
+                  }`}
+              >
+                  {showSoldItems ? <Clock className="w-3.5 h-3.5" /> : <Package className="w-3.5 h-3.5" />}
+                  {showSoldItems ? "Masquer objets vendus" : "Afficher tout (inclus ventes)"}
+              </button>
           </div>
       </div>
 
@@ -193,16 +331,45 @@ export default function PricingGuide({ inventory, onBrandClick }: Props) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {groupedData.map((group) => {
-          const key = `${group.model_name}|${group.brand}`;
+          const key = group.model_name.toLowerCase();
           const isExpanded = expandedModels.has(key);
           const isSelected = selectedModels.has(key);
+          const isAssociating = associatingGroups.has(key);
+          const hasAlias = group.variants.some(v => !!modelAliases[v.name]);
 
           return (
-            <div key={key} className={`bg-white dark:bg-[#1E293B] border-2 transition-all rounded-[36px] overflow-hidden ${isExpanded ? 'border-indigo-500 shadow-2xl' : 'border-slate-100 dark:border-slate-800 hover:border-indigo-100'}`}>
-              <div onClick={() => { const s = new Set(expandedModels); if(s.has(key)) s.delete(key); else s.add(key); setExpandedModels(s); }} className="p-8 cursor-pointer relative">
+            <div key={key} className={`bg-white dark:bg-[#1E293B] border-2 transition-all rounded-[36px] overflow-hidden ${isExpanded ? 'border-indigo-500 shadow-2xl' : 'border-slate-100 dark:border-slate-800 hover:border-indigo-100'} ${isAssociating ? 'ring-4 ring-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-900/10' : ''}`}>
+              <div 
+                onClick={() => { 
+                    if (isAssociationMode) {
+                        const s = new Set(associatingGroups);
+                        if (s.has(key)) s.delete(key); else s.add(key);
+                        setAssociatingGroups(s);
+                    } else {
+                        const s = new Set(expandedModels); if(s.has(key)) s.delete(key); else s.add(key); setExpandedModels(s); 
+                    }
+                }} 
+                className="p-8 cursor-pointer relative"
+              >
                 <div className="flex justify-between items-start mb-6">
                     <div className="flex items-center gap-4">
-                        <button onClick={(e) => { e.stopPropagation(); const s = new Set(selectedModels); if(s.has(key)) s.delete(key); else s.add(key); setSelectedModels(s); }} className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200' : 'border-slate-100 bg-slate-50 text-transparent'}`}>
+                        <button 
+                            onClick={(e) => { 
+                                e.stopPropagation(); 
+                                if (isAssociationMode) {
+                                    const s = new Set(associatingGroups);
+                                    if (s.has(key)) s.delete(key); else s.add(key);
+                                    setAssociatingGroups(s);
+                                } else {
+                                    const s = new Set(selectedModels); if(s.has(key)) s.delete(key); else s.add(key); setSelectedModels(s);
+                                }
+                            }} 
+                            className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center transition-all ${
+                                (isAssociationMode ? isAssociating : isSelected) 
+                                ? `${isAssociationMode ? 'bg-emerald-600 border-emerald-600' : 'bg-indigo-600 border-indigo-600'} text-white shadow-lg` 
+                                : 'border-slate-100 bg-slate-50 text-transparent'
+                            }`}
+                        >
                             <CheckCircle2 className="w-6 h-6" />
                         </button>
                         <div>
@@ -217,12 +384,32 @@ export default function PricingGuide({ inventory, onBrandClick }: Props) {
                             >
                               {group.brand}
                             </div>
-                            <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight whitespace-normal break-words">{group.model_name}</h3>
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight whitespace-normal break-words">
+                                    {group.model_name}
+                                </h3>
+                                {hasAlias && (
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleDeAssociate(group.model_name); }}
+                                        className="p-1.5 hover:bg-rose-50 hover:text-rose-500 rounded-lg transition-colors text-slate-300"
+                                        title="Désassocier"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
                     <div className="text-right">
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">{t.pricing.avg_price}</div>
-                        <div className="text-2xl font-black text-slate-900 dark:text-white">{group.avgPrice.toFixed(2)}€</div>
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">
+                            {group.hasRealSales ? 'Côte Réelle' : 'Estimation'}
+                        </div>
+                        <div className={`text-xl font-black ${group.hasRealSales ? 'text-slate-900 dark:text-white' : 'text-slate-400 italic'}`}>
+                            {group.avgPrice.toFixed(0)}€
+                        </div>
+                        <div className="text-[9px] font-black text-slate-400 opacity-60">
+                            {group.minPrice.toFixed(0)}€ - {group.maxPrice.toFixed(0)}€
+                        </div>
                     </div>
                 </div>
 
@@ -239,7 +426,7 @@ export default function PricingGuide({ inventory, onBrandClick }: Props) {
 
                 <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase">
                     <div className="flex items-center gap-4">
-                        <span className="flex items-center gap-1.5"><Package className="w-3.5 h-3.5" /> {group.variants.length} {t.pricing.copies}</span>
+                        <span className="flex items-center gap-1.5"><Package className="w-3.5 h-3.5" /> {group.totalStock} En Stock</span>
                         <span className="flex items-center gap-1.5 text-slate-300">•</span>
                         <span className="flex items-center gap-1.5">{group.totalVolume} {t.pricing.sold}</span>
                     </div>

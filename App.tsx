@@ -88,7 +88,8 @@ const AppContent: React.FC = () => {
     nextItemNumber: INITIAL_INVENTORY.length + 1,
     sharedWith: [],
     filters: { brands: [], categories: [], sizes: [], status: [], dateRange: { start: '', end: '' }, sortBy: 'id_desc', searchTerm: '' },
-    catalog: []
+    catalog: [],
+    modelAliases: {}
   });
 
   const isInitialLoad = useRef(true);
@@ -252,7 +253,8 @@ const AppContent: React.FC = () => {
           const loadedState = {
             ...data.state,
             catalog: data.state.catalog || [],
-            recurringExpenses: data.state.recurringExpenses || []
+            recurringExpenses: data.state.recurringExpenses || [],
+            modelAliases: data.state.modelAliases || {}
           };
           setState(loadedState);
           setTimeout(() => processRecurringExpenses(loadedState), 100);
@@ -409,7 +411,11 @@ const AppContent: React.FC = () => {
               onAddCatalogItem={(item) => setState(prev => ({ ...prev, catalog: [...(prev.catalog || []), item] }))}
               onDeleteCatalogItem={(id) => setState(prev => ({ ...prev, catalog: (prev.catalog || []).filter(c => c.id !== id) }))}
             />}
-            {activeTab === 'pricing' && <PricingGuide inventory={state.inventory} onBrandClick={(brand) => {
+            {activeTab === 'pricing' && <PricingGuide 
+              inventory={state.inventory} 
+              modelAliases={state.modelAliases || {}}
+              onUpdateAliases={(aliases) => setState(prev => ({ ...prev, modelAliases: aliases }))}
+              onBrandClick={(brand) => {
               setState(prev => ({ ...prev, filters: { brands: [brand], categories: prev.filters?.categories || [], sizes: prev.filters?.sizes || [], status: prev.filters?.status || [], dateRange: prev.filters?.dateRange || { start: '', end: '' }, sortBy: prev.filters?.sortBy, searchTerm: prev.filters?.searchTerm } }));
               setActiveTab('inventory');
             }} />}
