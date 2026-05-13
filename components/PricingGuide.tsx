@@ -4,7 +4,8 @@ import { CATEGORIES, BRANDS } from '../constants';
 import { 
   Search, ChevronDown, BrainCircuit, X, Loader2, 
   Filter, Package, Sparkles, Scale, Clock,
-  CheckCircle2, TrendingUp, Info, Hash, Link2, Trash2
+  CheckCircle2, TrendingUp, Info, Hash, Link2, Trash2,
+  Users
 } from 'lucide-react';
 import { analyzeModelPerformance } from '../services/geminiService';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -56,7 +57,7 @@ export default function PricingGuide({ inventory, modelAliases, onUpdateAliases,
   const [isAssociationMode, setIsAssociationMode] = useState(false);
   const [associatingGroups, setAssociatingGroups] = useState<Set<string>>(new Set());
 
-  const [showSoldItems, setShowSoldItems] = useState(true);
+  const [showSoldItems, setShowSoldItems] = useState(false);
 
   const groupedData = useMemo(() => {
     const groups: Record<string, GroupedModel> = {};
@@ -141,7 +142,8 @@ export default function PricingGuide({ inventory, modelAliases, onUpdateAliases,
     .filter(g => {
       const matchesSearch = g.model_name.toLowerCase().includes(searchTerm.toLowerCase()) || g.brand.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesBrand = selectedBrand === 'all' || g.brand === selectedBrand;
-      const matchesSoldFilter = showSoldItems || g.totalStock > 0;
+      // Par défaut : on ne montre QUE les objets vendus (g.totalVolume > 0)
+      const matchesSoldFilter = showSoldItems ? true : g.totalVolume > 0;
       return matchesSearch && matchesBrand && matchesSoldFilter;
     })
     .sort((a, b) => {
@@ -302,12 +304,12 @@ export default function PricingGuide({ inventory, modelAliases, onUpdateAliases,
                   onClick={() => setShowSoldItems(!showSoldItems)}
                   className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
                       showSoldItems 
-                      ? 'bg-slate-100 text-slate-600 dark:bg-slate-800' 
-                      : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 border border-indigo-100'
+                      ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 border border-indigo-100'
+                      : 'bg-slate-100 text-slate-600 dark:bg-slate-800'
                   }`}
               >
-                  {showSoldItems ? <Clock className="w-3.5 h-3.5" /> : <Package className="w-3.5 h-3.5" />}
-                  {showSoldItems ? "Masquer objets vendus" : "Afficher tout (inclus ventes)"}
+                  {showSoldItems ? <Users className="w-3.5 h-3.5" /> : <Package className="w-3.5 h-3.5" />}
+                  {showSoldItems ? "Mode : Tout l'inventaire" : "Mode : Côte Réelle (Ventes uniquement)"}
               </button>
           </div>
       </div>
