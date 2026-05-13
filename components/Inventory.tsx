@@ -691,9 +691,36 @@ const Inventory: React.FC<Props> = ({ inventory, activeFilters, catalog, onAdd, 
                               <div className="flex-1 min-w-0 flex flex-col gap-1">
                                   <span className="text-[8px] font-black text-indigo-500 uppercase tracking-widest truncate">{item.brand}</span>
                                   <h4 className="font-bold text-slate-900 dark:text-white text-[11px] md:text-xs leading-snug whitespace-normal break-words">{item.name}</h4>
-                                  <div className="flex items-baseline gap-2 mt-1">
-                                      <span className="text-sm md:text-base font-black text-slate-900 dark:text-white">{item.salePrice}€</span>
-                                      <span className="text-[8px] bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 rounded-md border border-slate-100 dark:border-slate-800 font-black text-slate-400">{item.size || 'TU'}</span>
+                                  <div className="flex flex-col gap-0.5 mt-1">
+                                      <div className="flex items-baseline gap-2">
+                                          <span className="text-sm md:text-base font-black text-slate-900 dark:text-white">{item.salePrice}€</span>
+                                          <span className="text-[8px] bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 rounded-md border border-slate-100 dark:border-slate-800 font-black text-slate-400">{item.size || 'TU'}</span>
+                                      </div>
+                                      {item.status === ItemStatus.IN_STOCK && (
+                                          <div className="text-[7.5px] font-black text-indigo-500 uppercase tracking-tighter italic">
+                                              Potentiel : {(() => {
+                                                  const catalogItems = (catalog || []).filter(c => 
+                                                      c.brand.toLowerCase() === item.brand.toLowerCase() && 
+                                                      c.category.toLowerCase() === item.category.toLowerCase() &&
+                                                      c.avgPrice !== undefined
+                                                  );
+                                                  if (catalogItems.length > 0) {
+                                                      const avg = catalogItems.reduce((acc, curr) => acc + (curr.avgPrice || 0), 0) / catalogItems.length;
+                                                      return Math.round(avg);
+                                                  }
+                                                  // Fallback: search by brand only
+                                                  const brandItems = (catalog || []).filter(c => 
+                                                      c.brand.toLowerCase() === item.brand.toLowerCase() &&
+                                                      c.avgPrice !== undefined
+                                                  );
+                                                  if (brandItems.length > 0) {
+                                                      const avg = brandItems.reduce((acc, curr) => acc + (curr.avgPrice || 0), 0) / brandItems.length;
+                                                      return Math.round(avg);
+                                                  }
+                                                  return Math.round(item.salePrice * 1.1); // Reasonable estimation
+                                              })()}€
+                                          </div>
+                                      )}
                                   </div>
                                   <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-1.5">
                                       <div className={`px-1.5 md:px-2 py-1 rounded-lg text-[8px] font-black flex items-center gap-1 w-fit border ${margin >= 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>

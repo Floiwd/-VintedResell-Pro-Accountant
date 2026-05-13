@@ -72,9 +72,9 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
 
   const handleCopyScript = () => {
     const script = `
-// Scraper Vinted "Ghost-Sync" v18.0 - Ultra Precision
+// Scraper Vinted "Ghost-Sync" v19.0 - Ultra Precision
 (async () => {
-  console.log("%c🚀 Lancement du Scraper Ghost-Sync v18.0 - Ultra Precision", "color: #6366f1; font-weight: bold; font-size: 14px;");
+  console.log("%c🚀 Lancement du Scraper Ghost-Sync v19.0 - Ultra Precision", "color: #6366f1; font-weight: bold; font-size: 14px;");
   
   const statusEl = document.createElement('div');
   const style = "position: fixed; top: 20px; right: 20px; z-index: 2147483647; background: #0f172a; color: white; padding: 25px; border-radius: 24px; font-family: sans-serif; font-weight: 800; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border: 2px solid #6366f1; min-width: 320px; text-align: center; transition: all 0.4s ease;";
@@ -115,7 +115,6 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
   const isSalesPage = /sold|transactions|mes_ventes|order|purchase|achats/.test(window.location.href);
   const items = [];
   
-  // High-performance robust extraction
   const extract = () => {
     const selectors = [
       '[data-testid*="grid-item"]',
@@ -126,6 +125,7 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
       '.c-order-list__item',
       '.purchase-item',
       '.order-list-item',
+      '.t-item-box',
       'article'
     ];
 
@@ -139,15 +139,15 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
         const img = el.querySelector("img");
         
         if (priceMatch && img && img.src && !img.src.includes("avatar")) {
-          // Robust filtering for Titles and Brands
           const lines = text.split("\\n")
             .map(l => l.trim())
             .filter(l => {
               const lower = l.toLowerCase();
               return l.length > 2 && 
                      !l.includes("€") && !l.includes("£") && !l.includes("$") && 
-                     !/\\d+ (vues|views|vistas|visualizações)/i.test(l) && // Skip view counts
-                     !/vendu|sold|terminé|finalisé|verkocht|venduto|favoris|évit/i.test(lower); // Skip status labels
+                     !/\\d+ (vues|views|vistas|visualizações)/i.test(l) &&
+                     !/favoris|favori|likes|likes|favori/i.test(lower) &&
+                     !/vendu|sold|terminé|finalisé|verkocht|venduto|éditer|modifier/i.test(lower);
             });
           
           const titleCandidate = lines.sort((a, b) => b.length - a.length)[0] || "Article Vinted";
@@ -169,27 +169,6 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
         }
       } catch (e) {}
     });
-
-    // Fallback if zero items but obvious items on page
-    if (items.length === 0) {
-      document.querySelectorAll('img').forEach(img => {
-        if (img.width > 50 && !img.src.includes('avatar')) {
-          const parent = img.closest('div');
-          const siblingText = parent?.innerText || parent?.parentElement?.innerText || "";
-          const priceMatch = siblingText.match(/(\\d+[,.]?\\d*)\\s*[€£$]/);
-          if (priceMatch) {
-            items.push({
-              title: "Article Auto-détecté",
-              brand: "",
-              salePrice: parseFloat(priceMatch[1].replace(",", ".")),
-              imageUrl: img.src,
-              status: isSalesPage ? "SOLD" : "IN_STOCK",
-              date: new Date().toISOString().split("T")[0]
-            });
-          }
-        }
-      });
-    }
   };
 
   extract();
@@ -202,11 +181,10 @@ const SyncVinted: React.FC<SyncVintedProps> = ({
     statusEl.style.background = "#10b981";
     document.getElementById('sync-bar').style.width = "100%";
     statusEl.innerHTML = \`
-      <div style="font-size: 20px; margin-bottom: 10px;">✅ EXTRACTION OK</div>
+      <div style="font-size: 20px; margin-bottom: 10px;">✅ EXTRACTION v19.0 OK</div>
       <div style="font-size: 12px; margin-bottom: 15px;">\${finalItems.length} articles identifiés</div>
       <button id="copy-vpro-btn" style="background: white; color: #10b981; border: none; padding: 12px; border-radius: 12px; font-weight: 900; cursor: pointer; width: 100%;">COPIER POUR LE HUB</button>
     \`;
-    
     document.getElementById('copy-vpro-btn').onclick = async () => {
       await navigator.clipboard.writeText(jsonOutput);
       document.getElementById('copy-vpro-btn').innerText = "COPIÉ !";
@@ -251,37 +229,35 @@ Le dossier doit contenir exactement :
     const manifest = {
       manifest_version: 3,
       name: "ResellPro Stealth Sync",
-      version: "16.1.0",
+      version: "20.0.0",
       description: "Synchronisation automatique et sécurisée pour Vinted ResellPro",
       permissions: ["activeTab", "scripting"],
       action: {
         default_popup: "popup.html"
       },
       content_scripts: [{
-        matches: ["*://*.vinted.fr/*", "*://*.vinted.be/*", "*://*.vinted.it/*", "*://*.vinted.es/*", "*://*.vinted.nl/*", "*://*.vinted.co.uk/*", "*://*.vinted.de/*", "*://*.vinted.com/*"],
+        matches: ["*://*.vinted.fr/*", "*://*.vinted.be/*", "*://*.vinted.it/*", "*://*.vinted.es/*", "*://*.vinted.nl/*", "*://*.vinted.co.uk/*", "*://*.vinted.de/*", "*://*.vinted.com/*", "*://*.vinted.pl/*", "*://*.vinted.pt/*", "*://*.vinted.lu/*", "*://*.vinted.at/*", "*://*.vinted.cz/*"],
         js: ["content.js"]
       }]
     };
 
     const contentJs = `
-const SYNC_CONFIG = { MIN_DELAY: 600, MAX_DELAY: 1400, VERSION: '16.1 Ghost' };
+const SYNC_CONFIG = { MIN_DELAY: 600, MAX_DELAY: 1400, VERSION: '20.0 Ghost' };
 const wait = (ms) => new Promise(res => setTimeout(res, ms));
 
 async function stealthScroll() {
-  const overlay = createStatusOverlay("SCANNING VINTED DATABASE...");
+  const overlay = createStatusOverlay("SCANNING VINTED DATABASE v20.0...");
   let currentPos = 0;
   let lastHeight = document.body.scrollHeight;
   let stationaryCount = 0;
   let forceStop = false;
 
-  // Add stop button to overlay
   const stopBtn = document.createElement('button');
   stopBtn.innerText = "FINISH NOW";
   stopBtn.style.cssText = "margin-top: 15px; background: #374151; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer;";
   stopBtn.onclick = () => { forceStop = true; };
   overlay.appendChild(stopBtn);
 
-  // Initial nudge
   window.scrollTo({ top: 500, behavior: 'smooth' });
   await wait(800);
 
@@ -303,7 +279,7 @@ async function stealthScroll() {
       lastHeight = newHeight;
     }
     
-    if (currentPos > 100000) break;
+    if (currentPos > 60000) break;
   }
   
   updateOverlayProgress(overlay, 100);
@@ -340,11 +316,11 @@ function scrapeData() {
     '.feed-grid__item',
     '.user-main-stats__item',
     '.profile__items-grid-item',
-    'article',
-    '.order-list-item', 
-    '.purchase-item',
     '.c-order-list__item',
-    '.t-item-box'
+    '.purchase-item',
+    '.order-list-item',
+    '.t-item-box',
+    'article'
   ];
   
   const containers = document.querySelectorAll(selectors.join(", "));
@@ -364,7 +340,8 @@ function scrapeData() {
             return l.length > 2 && 
                    !l.includes("€") && !l.includes("£") && !l.includes("$") && 
                    !/\\d+ (vues|views|vistas|visualizações)/i.test(l) &&
-                   !/vendu|sold|terminé|finalisé|verkocht|venduto|favoris/i.test(lower);
+                   !/favoris|favori|likes|likes|favori/i.test(lower) && 
+                   !/vendu|sold|finalis|termin|verkocht|venduto|éditer|modifier/i.test(lower);
           });
         
         const titleCandidate = lines.sort((a, b) => b.length - a.length)[0] || "Article Vinted";
@@ -386,35 +363,17 @@ function scrapeData() {
     } catch (e) {}
   });
 
-  // Fallback if zero items
-  if (items.length === 0) {
-    document.querySelectorAll('img').forEach(img => {
-      if (img.width > 50 && !img.src.includes('avatar')) {
-        const p = img.closest('div')?.parentElement;
-        const pt = p?.innerText || "";
-        const pm = pt.match(/(\\d+[,.]?\\d*)\\s*[€£$]/);
-        if (pm) {
-          items.push({
-            title: "Article Détecté",
-            brand: "",
-            salePrice: parseFloat(pm[1].replace(",", ".")),
-            imageUrl: img.src,
-            status: isSalesPage ? "SOLD" : "IN_STOCK",
-            date: new Date().toISOString().split("T")[0]
-          });
-        }
-      }
-    });
-  }
-
-  // Deduplicate
   const unique = items.filter((v,i,a)=>a.findIndex(t=>(t.imageUrl===v.imageUrl))===i);
   return { platform: "VINTED", items: unique };
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "START_SYNC") {
-    stealthScroll().then(data => sendResponse({ data }));
+    stealthScroll().then(data => {
+      sendResponse({ success: true, data });
+    }).catch(err => {
+      sendResponse({ success: false, error: err.message });
+    });
     return true; 
   }
 });
@@ -449,7 +408,10 @@ document.getElementById('scrapeBtn').onclick = async () => {
   }
   
   const btn = document.getElementById('scrapeBtn');
-  btn.innerText = "SYNCING...";
+  const resultDiv = document.getElementById('result');
+  const copyBtn = document.getElementById('copyBtn');
+  
+  btn.innerText = "SYNCING v20.0...";
   btn.disabled = true;
   btn.style.opacity = '0.5';
 
@@ -458,21 +420,21 @@ document.getElementById('scrapeBtn').onclick = async () => {
     btn.disabled = false;
     btn.style.opacity = '1';
     
-    if (response && response.data) {
+    if (response && response.success && response.data) {
       const count = response.data.items.length;
-      document.getElementById('result').innerHTML = '<div style="color: #10b981; font-weight: 900; margin-bottom: 8px;">EXTRACTION OK</div>' + count + ' articles identifiers.';
-      document.getElementById('result').style.display = 'block';
-      document.getElementById('copyBtn').style.display = 'block';
-      document.getElementById('copyBtn').onclick = () => {
+      resultDiv.innerHTML = '<div style="color: #10b981; font-weight: 900; margin-bottom: 8px;">EXTRACTION v20.0 OK</div>' + count + ' articles identifiés.';
+      resultDiv.style.display = 'block';
+      copyBtn.style.display = 'block';
+      copyBtn.onclick = () => {
         navigator.clipboard.writeText(JSON.stringify(response.data, null, 2));
-        alert("Success ! Donnees copiees. Collez-les maintenant dans le Power Hub.");
+        alert("Success ! Données copiées. Collez-les maintenant dans le Power Hub.");
       };
     } else {
-      alert("Error: Please refresh the page and try again.");
+      alert("Error: " + (response ? response.error : "No response from script. Refresh Vinted and try again."));
     }
   });
 };
-    `;
+`;
 
     zip.file('manifest.json', JSON.stringify(manifest, null, 2));
     zip.file('content.js', contentJs.trim());

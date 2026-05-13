@@ -58,6 +58,8 @@ export interface Member {
   name: string;
   sharePercentage: number;
   isActive?: boolean;
+  balance?: number;
+  initialInvestment?: number;
 }
 
 export interface FinancialTransfer {
@@ -82,7 +84,9 @@ export interface CatalogItem {
   id: string; 
   name: string; 
   brand: string; 
-  category: string; 
+  category: string;
+  avgPrice?: number;
+  demand?: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
 export interface FilterState {

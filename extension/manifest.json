@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ResellPro Stealth Sync",
-  "version": "15.0",
+  "version": "20.0",
   "description": "Synchronisation automatique et sécurisée pour Vinted ResellPro",
   "permissions": ["activeTab", "scripting", "clipboardWrite"],
   "action": {
@@ -14,7 +14,15 @@
         "*://*.vinted.be/*",
         "*://*.vinted.it/*",
         "*://*.vinted.es/*",
-        "*://*.vinted.nl/*"
+        "*://*.vinted.nl/*",
+        "*://*.vinted.co.uk/*",
+        "*://*.vinted.de/*",
+        "*://*.vinted.com/*",
+        "*://*.vinted.pl/*",
+        "*://*.vinted.pt/*",
+        "*://*.vinted.lu/*",
+        "*://*.vinted.at/*",
+        "*://*.vinted.cz/*"
       ],
       "js": ["content.js"]
     }

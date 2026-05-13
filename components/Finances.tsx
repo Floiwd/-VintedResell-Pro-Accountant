@@ -230,6 +230,32 @@ const Finances: React.FC<Props> = ({
       analyticsLink.click();
       document.body.removeChild(analyticsLink);
     }
+
+    // Export Members
+    const membersHeaders = ["Nom", "Part (%)", "Balance Actuelle", "Apport Initial"];
+    const membersRows = state.members.map(m => [m.name, m.sharePercentage, m.balance || 0, m.initialInvestment || 0]);
+    const membersCsv = [membersHeaders, ...membersRows].map(e => e.join(",")).join("\n");
+    const membersBlob = new Blob([membersCsv], { type: 'text/csv;charset=utf-8;' });
+    const membersUrl = URL.createObjectURL(membersBlob);
+    const membersLink = document.createElement("a");
+    membersLink.href = membersUrl;
+    membersLink.setAttribute("download", `membres_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(membersLink);
+    membersLink.click();
+    document.body.removeChild(membersLink);
+
+    // Export Recurring Expenses
+    const recurringHeaders = ["Nom", "Montant", "Fréquence", "Prochaine Échéance", "Statut"];
+    const recurringRows = state.recurringExpenses.map(r => [r.name, r.amount, r.frequency, r.nextDueDate, r.active ? 'Actif' : 'Inactif']);
+    const recurringCsv = [recurringHeaders, ...recurringRows].map(e => e.join(",")).join("\n");
+    const recurringBlob = new Blob([recurringCsv], { type: 'text/csv;charset=utf-8;' });
+    const recurringUrl = URL.createObjectURL(recurringBlob);
+    const recurringLink = document.createElement("a");
+    recurringLink.href = recurringUrl;
+    recurringLink.setAttribute("download", `charges_recurrentes_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(recurringLink);
+    recurringLink.click();
+    document.body.removeChild(recurringLink);
   };
 
   const renderAnalytics = () => {
